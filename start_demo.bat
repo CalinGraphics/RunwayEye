@@ -14,8 +14,11 @@ if not exist "venv\Scripts\python.exe" (
 )
 
 if not exist ".env" (
-  copy ".env.example" ".env" >nul
-  echo [RunwayEye] Am creat .env din .env.example. Verifica VIDEO_SOURCE in .env.
+  copy ".env.example" ".env" >nul 2>&1 && (
+    echo [RunwayEye] Am creat .env din .env.example. Verifica VIDEO_SOURCE in .env.
+  ) || (
+    echo [RunwayEye] Lipseste .env.example, pornesc cu valorile implicite.
+  )
 )
 
 if not exist "app\static\css\app.css" (

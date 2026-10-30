@@ -2,6 +2,7 @@
 
 import io
 import socket
+import time
 
 import qrcode
 import qrcode.image.svg
@@ -26,8 +27,17 @@ def lan_ip() -> str:
     return ip
 
 
-def team_url(port: int) -> str:
-    return f"http://{lan_ip()}:{port}/team"
+_cached_ip = ("", 0.0)
+
+
+def team_url(port: int, key: str = "") -> str:
+    # Polled every 2 s by each open dashboard; the address only changes when the network does.
+    global _cached_ip
+    ip, at = _cached_ip
+    if not ip or time.monotonic() - at > 30:
+        ip = lan_ip()
+        _cached_ip = (ip, time.monotonic())
+    return f"http://{ip}:{port}/team" + (f"?key={key}" if key else "")
 
 
 def qr_svg(text: str) -> bytes:

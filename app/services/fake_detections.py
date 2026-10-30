@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from app.services.risk import assess_risk
+from app.vision.annotate import placeholder_frame
 from app.vision.calibration import RunwayGeometry
 from app.vision.types import CLASS_LABELS, BBox, Detection
 
@@ -35,6 +36,19 @@ def fake_crop(class_key: str, rng: random.Random) -> bytes:
     else:
         cv2.ellipse(img, (120, 120), (40, 22), 30, 0, 360, color, -1)
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    return buf.tobytes() if ok else b""
+
+
+def fake_snapshot(det: Detection, crop_jpeg: bytes, width: int = 960, height: int = 540) -> bytes:
+    frame = placeholder_frame(width, height, "Detecție de test", "DEMO_FAKE_DETECTIONS=true")
+    crop = cv2.imdecode(np.frombuffer(crop_jpeg, np.uint8), cv2.IMREAD_COLOR)
+    if crop is not None:
+        b = det.bbox
+        side = max(b.w, b.h) * 3
+        x, y = max(0, min(width - side, b.center[0] - side // 2)), max(0, min(height - side, b.center[1] - side // 2))
+        frame[y : y + side, x : x + side] = cv2.resize(crop, (side, side))
+        cv2.rectangle(frame, (x, y), (x + side, y + side), (0, 0, 230), 2)
+    ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
     return buf.tobytes() if ok else b""
 
 
@@ -85,5 +99,6 @@ class FakeDetectionGenerator:
         while not self._stop.is_set():
             if len(self.incidents.open_incidents()) < self.max_open:
                 det = make_fake_detection(self.geometry, self.unknown_critical_cm, self._rng)
-                self.incidents.create_from_detection(det, None, fake=True)
+                snapshot = fake_snapshot(det, base64.b64decode(det.crop_jpeg_b64))
+                self.incidents.create_from_detection(det, snapshot, fake=True)
             self._stop.wait(self._rng.uniform(*self.interval_s))

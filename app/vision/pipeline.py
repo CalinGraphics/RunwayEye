@@ -103,6 +103,11 @@ class VisionService:
     def reset_reference(self) -> None:
         self.engine.reset_reference()
 
+    def restore_incidents(self, incidents) -> None:
+        for inc in incidents:
+            if not inc.fake:
+                self.engine.restore_incident(inc.id, tuple(inc.center_px), inc.bbox, inc.risk, inc.object_present)
+
     def close_incident(self, incident_id: str, absorb: bool) -> None:
         self.engine.close_incident(incident_id, absorb)
 

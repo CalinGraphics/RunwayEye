@@ -147,3 +147,49 @@ def test_history_csv_export_and_detail_timings(client):
     assert "Până la preluarea echipei" in detail and "Până la eliminare" in detail
     page = client.get("/incidents?period=all").text
     assert 'href="/incidents.csv?period=all"' in page
+
+
+def test_other_devices_need_the_qr_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ACCESS_KEY", "cheie-test")
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app, client=("192.168.1.40", 5000)) as phone:
+        assert phone.get("/team", headers={"Accept": "text/html"}).status_code == 401
+        assert phone.post("/reference").status_code == 401
+        assert phone.get("/health").status_code == 200
+
+        first = phone.get("/team?key=cheie-test", follow_redirects=False)
+        assert first.status_code == 303 and first.headers["location"].endswith("/team")
+        assert phone.get("/team").status_code == 200
+        assert phone.post("/reference").status_code == 200
+        assert "key=cheie-test" in phone.get("/api/status").json()["team_url"]
+    get_settings.cache_clear()
+
+
+def test_leftover_fake_incidents_are_closed_on_start(client):
+    from app.services.fake_detections import make_fake_detection
+    from app.services.incident_service import IncidentService
+    from app.vision.pipeline import runway_geometry
+
+    st = client.app.state
+    det = make_fake_detection(runway_geometry(st.settings), st.settings.unknown_critical_cm, random.Random(5))
+    inc = st.incidents.create_from_detection(det, None, fake=True)
+
+    restarted = IncidentService(st.store, st.bus, st.settings.camera_id)
+    restarted.close_fake()
+    assert restarted.open_incidents() == []
+    assert restarted.get(inc.id).status == "false_alarm"
+
+
+def test_ai_description_is_saved_on_the_incident(client):
+    inc = _new_incident(client)
+    client.app.state.incidents.set_description(inc.id, "Un șurub metalic, poate fi aspirat de motor.")
+    assert client.get(f"/incidents/{inc.id}").text.count("poate fi aspirat de motor") == 1
+    events = client.app.state.incidents.events(inc.id)
+    assert events[-1]["label"] == "Descriere AI"

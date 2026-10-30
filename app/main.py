@@ -9,8 +9,10 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.access import load_key, require_key
 from app.config import ROOT_DIR, get_settings
 from app.routers import calibration, control, events, incidents, pages, upload, video
+from app.services.claude_describe import ClaudeDescriber
 from app.services.events import EventBus
 from app.services.fake_detections import FakeDetectionGenerator
 from app.services.incident_service import IncidentService, InvalidAction
@@ -31,11 +33,15 @@ async def lifespan(app: FastAPI):
     bus.bind_loop(asyncio.get_running_loop())
     camera = {"id": s.camera_id, "name": s.camera_name, "source": s.video_source, "calibration": None}
     store = DataStore(s, camera)
-    incident_service = IncidentService(store, bus, s.camera_id)
+    incident_service = IncidentService(store, bus, s.camera_id, describer=ClaudeDescriber(s))
     vision = VisionService(s, on_event=incident_service.handle_engine_event)
     incident_service.on_close = vision.close_incident
+    if not s.demo_fake_detections:
+        incident_service.close_fake()
+    vision.restore_incidents(incident_service.open_incidents())
 
     app.state.settings = s
+    app.state.access_key = load_key(s)
     app.state.bus = bus
     app.state.store = store
     app.state.incidents = incident_service
@@ -58,6 +64,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="RunwayEye", lifespan=lifespan, docs_url=None, redoc_url=None)
+app.middleware("http")(require_key)
 app.mount("/static", StaticFiles(directory=ROOT_DIR / "app" / "static"), name="static")
 
 for router in (pages.router, video.router, events.router, incidents.router, control.router, upload.router, calibration.router):

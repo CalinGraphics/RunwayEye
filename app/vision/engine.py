@@ -178,6 +178,10 @@ class DetectionEngine:
         """Operator closed the incident. `absorb`: learn that spot as background (false alarm)."""
         self._commands.put(("close", (incident_id, absorb)))
 
+    def restore_incident(self, incident_id: str, center: tuple[int, int], bbox: BBox, risk: str, present: bool) -> None:
+        """An incident still open from before a restart, so the same object doesn't raise a second one."""
+        self._commands.put(("restore", (incident_id, _Site(center=center, present=present, bbox=bbox, risk=risk))))
+
     def set_yolo(self, yolo: Detector | None) -> None:
         self._commands.put(("yolo", yolo))
 
@@ -215,6 +219,9 @@ class DetectionEngine:
                         self.tracker.drop(t)
                 if absorb and site is not None and site.bbox is not None:
                     self.change.absorb(site.bbox)
+            elif cmd == "restore":
+                incident_id, site = arg
+                self._sites.setdefault(incident_id, site)
             elif cmd == "yolo":
                 self.yolo = arg
 

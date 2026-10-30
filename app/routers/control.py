@@ -25,7 +25,7 @@ def status(request: Request):
         "clients": st.bus.counts(),
         "claude": "pornit" if s.enable_claude and s.anthropic_api_key else "oprit",
         "runway": s.runway_name,
-        "team_url": team_url(s.port),
+        "team_url": team_url(s.port, st.access_key),
         "demo_mode": s.demo_mode,
         "fake_detections": s.demo_fake_detections,
         "large_object": st.incidents.large_object,
@@ -55,4 +55,5 @@ def tune(request: Request, values: Tuning):
 
 @router.get("/qr.svg")
 def team_qr(request: Request):
-    return Response(qr_svg(team_url(request.app.state.settings.port)), media_type="image/svg+xml")
+    st = request.app.state
+    return Response(qr_svg(team_url(st.settings.port, st.access_key)), media_type="image/svg+xml")

@@ -6,6 +6,7 @@
   <div class="space-y-4">
     <div class="space-y-1">
       <p class="text-lg font-semibold first-letter:uppercase">{{ inc.object_class }} · risc {{ inc.risk }}</p>
+      {% if inc.ai_description %}<p class="text-sm text-base-content/70">{{ inc.ai_description }}</p>{% endif %}
       <p class="text-sm text-base-content/70">
         Pista {{ settings.runway_name }} · Sector {{ inc.sector or "—" }}
         {% if inc.runway_distance_m is not none %} · {{ inc.runway_distance_m | round | int }} m de pragul 09{% endif %}

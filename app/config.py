@@ -83,6 +83,8 @@ class Settings(BaseSettings):
     demo_fake_detections: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    # Key other devices need (it's in the QR code). Empty = generated once into data/access_key.txt.
+    access_key: str = ""
     data_dir: str = "data"
 
     def path(self, value: str) -> Path:

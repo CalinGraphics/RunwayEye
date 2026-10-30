@@ -4,6 +4,7 @@ import sys
 
 import uvicorn
 
+from app.access import load_key
 from app.config import get_settings
 from app.services.team_alerts import team_url
 
@@ -17,7 +18,7 @@ def main() -> None:
     print()
     print("  RunwayEye")
     print(f"  Panou:           http://localhost:{s.port}/")
-    print(f"  Telefon echipă:  {team_url(s.port)}")
+    print(f"  Telefon echipă:  {team_url(s.port, load_key(s))}")
     print(flush=True)
     uvicorn.run("app.main:app", host=s.host, port=s.port, timeout_graceful_shutdown=2, log_level="info")
 

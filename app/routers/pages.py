@@ -15,7 +15,7 @@ def command_center(request: Request):
         "command_center.html",
         {
             "geometry": st.vision.geometry,
-            "team_url": team_url(st.settings.port),
+            "team_url": team_url(st.settings.port, st.access_key),
             "tuning": st.vision.status()["tuning"],
         },
     )

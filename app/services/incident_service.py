@@ -50,6 +50,7 @@ ACTION_LABELS = {
     "object_gone": "Obiect dispărut din imagine",
     "object_returned": "Obiectul a reapărut",
     "class_updated": "Clasă actualizată de YOLO",
+    "ai_description": "Descriere AI",
 }
 
 
@@ -80,6 +81,7 @@ class Incident(BaseModel):
     resolved_at: datetime | None = None
     false_alarm_at: datetime | None = None
     updated_at: datetime | None = None
+    ai_description: str | None = None
     fake: bool = False
 
     @property
@@ -105,8 +107,9 @@ class Incident(BaseModel):
 
 
 class IncidentService:
-    def __init__(self, store: DataStore, bus: EventBus, camera_id: str):
+    def __init__(self, store: DataStore, bus: EventBus, camera_id: str, describer=None):
         self.store = store
+        self.describer = describer
         self.bus = bus
         self.camera_id = camera_id
         self.on_close: Callable[[str, bool], None] | None = None
@@ -116,6 +119,16 @@ class IncidentService:
         for data in store.local.load_incidents("WHERE status IN ('new','confirmed','dispatched')"):
             inc = Incident.model_validate(data)
             self._open[inc.id] = inc
+
+    def close_fake(self) -> None:
+        """Test detections left open from a run with DEMO_FAKE_DETECTIONS=true."""
+        with self._lock:
+            fake = [inc for inc in self._open.values() if inc.fake]
+            for inc in fake:
+                inc.status = "false_alarm"
+                inc.false_alarm_at = utcnow()
+                self._open.pop(inc.id)
+                self._save(inc, "false_alarm", note="detecție de test")
 
     def open_incidents(self) -> list[Incident]:
         with self._lock:
@@ -184,14 +197,25 @@ class IncidentService:
             size_estimate_cm=det.size_estimate_cm,
             fake=fake,
         )
-        if det.crop_jpeg_b64:
-            self.store.local.save_image(inc.id, "crop", base64.b64decode(det.crop_jpeg_b64))
+        crop = base64.b64decode(det.crop_jpeg_b64) if det.crop_jpeg_b64 else None
+        if crop:
+            self.store.local.save_image(inc.id, "crop", crop)
         self.store.local.save_image(inc.id, "snapshot", snapshot_jpeg)
         with self._lock:
             self._open[inc.id] = inc
             self._save(inc, "detected", note=f"{det.object_class} · {det.source}", publish="incident.new")
         log.info("New incident %s: %s sector=%s risk=%s", inc.id, inc.object_class, inc.sector, inc.risk)
+        if self.describer is not None and crop and not fake:
+            self.describer.describe_later(crop, inc.object_class, lambda text: self.set_description(inc.id, text))
         return inc
+
+    def set_description(self, incident_id: str, text: str) -> None:
+        with self._lock:
+            inc = self._open.get(incident_id) or self.get(incident_id)
+            if inc is None:
+                return
+            inc.ai_description = text
+            self._save(inc, "ai_description")
 
     def act(self, incident_id: str, action: str) -> Incident:
         if action not in ACTIONS:

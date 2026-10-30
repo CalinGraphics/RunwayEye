@@ -18,6 +18,7 @@ data/uploads/
 data/*.db
 data/*.db-journal
 data/tuning.json
+data/access_key.txt
 data/eval/*.mp4
 data/eval/summary.*
 

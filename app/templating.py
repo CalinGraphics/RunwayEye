@@ -46,9 +46,12 @@ def fmt_duration(start, end) -> str:
     return fmt_seconds((b - a).total_seconds())
 
 
+STATIC_DIR = ROOT_DIR / "app" / "static"
+
+
 def asset_version() -> str:
-    css = ROOT_DIR / "app" / "static" / "css" / "app.css"
-    return str(int(css.stat().st_mtime)) if css.exists() else "0"
+    newest = max((p.stat().st_mtime for p in STATIC_DIR.rglob("*") if p.suffix in (".css", ".js")), default=0)
+    return str(int(newest))
 
 
 templates.env.filters["time"] = fmt_time

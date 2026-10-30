@@ -103,6 +103,23 @@ def test_no_duplicate_incidents():
     assert [e.incident_id for e in back if isinstance(e, ObjectReturned)] == [incident_id]
 
 
+def test_open_incident_survives_restart():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    det = inc.detection
+
+    # New engine after a restart: the bolt is still there and the reference is learned without it.
+    restarted = make_engine()
+    restarted.restore_incident(det.id, det.center_px, det.bbox, det.risk, present=True)
+    learn(restarted, scene)
+    events = run(restarted, [scene.frame([BOLT]) for _ in range(30)])
+    assert incidents(events) == []
+
+    gone = run(restarted, [scene.frame() for _ in range(restarted.params.gone_frames + 2)])
+    assert [e.incident_id for e in gone if isinstance(e, ObjectGone)] == [det.id]
+
+
 def test_closed_false_alarm_does_not_retrigger():
     scene, engine = Scene(), make_engine()
     learn(engine, scene)

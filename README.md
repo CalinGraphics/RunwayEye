@@ -13,13 +13,16 @@ Totul rulează local, fără internet: detecția, panoul, alertele și pagina ec
 Cerințe: Python 3.14 (testat; 3.12+ merge), Node.js (doar pentru compilarea CSS), o cameră web sau un clip video.
 
 ```powershell
-cd "D:\Runaway Eye"
+cd RunwayEye
 py -3.14 -m venv venv
 venv\Scripts\python -m pip install -r requirements.txt   # ~5 min (torch, ultralytics)
 npm install                                              # Tailwind + DaisyUI + HTMX + Alpine, compilate local
 copy .env.example .env                                   # apoi verificați VIDEO_SOURCE
 start_demo.bat
 ```
+
+`venv/` nu se copiază de pe alt calculator: e legat de calea și de Python-ul cu care a fost creat.
+Dacă apare `did not find executable`, ștergeți folderul `venv` și refaceți pașii de mai sus.
 
 `start_demo.bat` activează venv-ul, pornește serverul pe `0.0.0.0:8000`, afișează adresa pentru telefon
 și deschide panoul în browser. Manual: `venv\Scripts\activate` apoi `python -m app`.
@@ -32,7 +35,7 @@ start_demo.bat
 |---|---|
 | `/` | Command Center: video live, harta pistei cu sectoare, alertele, bara de stare |
 | `/team` | Telefonul echipei de intervenție (alertă roșie, sunet, vibrație, „Am preluat”, „Obiect eliminat”) |
-| `/incidents` | Istoricul, cu filtre și cronologia fiecărui incident |
+| `/incidents` | Istoricul, cu filtre și cronologia fiecărui incident; export CSV pentru Excel (`;`, virgulă zecimală) |
 | `/calibrate` | Cele 4 colțuri ale pistei: masca pistei, sectoarele și metrii |
 | `/upload` | Test pe o poză sau un clip, fără să creeze incidente |
 | `/health`, `/api/status` | Verificări rapide |
@@ -49,8 +52,8 @@ start_demo.bat
 Codul e același pentru toate. Dacă sursa nu răspunde, aplicația trece automat pe `FALLBACK_VIDEO`
 (filmați un clip cu macheta!), iar bara de stare arată **REZERVĂ**.
 
-Fără cameră și fără clip real: `VIDEO_SOURCE=data/videos/synthetic_demo.mp4`, o machetă desenată în care
-o „mână” lasă un șurub și o agrafă. E doar pentru test, nu pentru cifre.
+Fără cameră și fără clip real: `python scripts\make_demo_clip.py`, apoi `VIDEO_SOURCE=data/videos/synthetic_demo.mp4`.
+E o machetă desenată în care o „mână” lasă un șurub și o agrafă. E doar pentru test, nu pentru cifre.
 
 ## Telefonul echipei
 
@@ -58,6 +61,9 @@ o „mână” lasă un șurub și o agrafă. E doar pentru test, nu pentru cifr
 2. Portul permis în firewall (o singură dată, PowerShell ca administrator):
    `netsh advfirewall firewall add rule name="RunwayEye 8000" dir=in action=allow protocol=TCP localport=8000`
 3. Pe panou: **Telefon echipă** → cod QR cu `http://<IP-laptop>:8000/team`.
+   Codul conține și cheia de acces (`?key=…`): fără ea, alte dispozitive din rețea primesc „Acces doar cu codul QR”.
+   Laptopul pe care rulează serverul nu are nevoie de cheie. Pentru panou pe alt laptop: `http://<IP-laptop>:8000/?key=<cheia>`
+   (cheia e în `data/access_key.txt` sau `ACCESS_KEY` din `.env`).
 4. Pe telefon: apăsați o dată **Activează alertele** (browserele blochează sunetul și vibrația până la prima atingere).
    Vibrația merge pe Android (Chrome); iPhone nu permite vibrația din pagini web.
 
@@ -94,6 +100,12 @@ Fără calibrare, toată imaginea e considerată pistă și alertele nu au secto
 2. În `.env`: `ENABLE_SUPABASE=true`, `USE_LOCAL_DATA=false`, `SUPABASE_URL`, `SUPABASE_KEY` (cheia secretă / service role, rămâne pe laptop).
 3. Aplicația scrie întâi local, apoi sincronizează în fundal. Dacă pică internetul, datele rămân în coadă
    (bara de stare arată „N în coadă”) și se trimit când revine conexiunea.
+
+## Descrierea AI (opțional)
+
+Cu `ENABLE_CLAUDE=true` și `ANTHROPIC_API_KEY` în `.env`, fiecare incident nou primește în câteva secunde o propoziție
+scrisă de Claude pe baza pozei decupate („Un șurub metalic pe axul pistei…”). Apare pe card, în detalii și în cronologie.
+Rulează în fundal: fără internet alerta pleacă la fel, doar fără descriere.
 
 ## Evaluarea (cifrele pentru juriu)
 
