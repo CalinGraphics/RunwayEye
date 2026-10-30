@@ -303,8 +303,22 @@ document.addEventListener("alpine:init", () => {
         a,
         label: ACTION_LABELS[a],
         primary: a === next,
-        cls: a === next ? ACTION_BUTTONS[a] : a === "false-alarm" ? "btn-ghost text-base-content/70 hover:text-error" : "border-base-300 bg-base-200 hover:border-base-content/40",
+        cls: a === next ? ACTION_BUTTONS[a] : a === "false-alarm" ? "btn-ghost text-base-content/60 hover:text-error" : "border-line bg-base-100 hover:border-base-content/40",
       }));
+    },
+
+    // Detected → confirmed → team → removed; "now" is the step the operator or team should do next.
+    steps(inc) {
+      const done = { new: 1, confirmed: 2, dispatched: inc.team_ack_at ? 3 : 2 }[inc.status] ?? 4;
+      const labels = ["Detectat", "Confirmat", inc.team_ack_at ? "Echipa în drum" : "Echipă", "Eliminat"];
+      return labels.map((label, i) => ({ label, state: i < done ? "done" : i === done ? "now" : "todo" }));
+    },
+
+    get localTime() {
+      return new Date(this.now).toLocaleTimeString("ro-RO");
+    },
+    get utcTime() {
+      return new Date(this.now).toISOString().slice(11, 19);
     },
 
     markerStyle(inc) {
@@ -339,7 +353,7 @@ document.addEventListener("alpine:init", () => {
         };
       }
       if (this.large) return { tone: "warning", text: "Obiect mare pe pistă" };
-      return { tone: "success", text: "Pista curată" };
+      return { tone: "success", text: "Pistă liberă" };
     },
 
     chip(kind) {

@@ -1,41 +1,53 @@
-<div class="grid gap-4 md:grid-cols-[220px_1fr]">
+{% from "partials/icons.html" import icon %}
+{% set risk_tone = {"critic": "error", "mediu": "warning"} %}
+<div class="grid gap-5 md:grid-cols-[240px_1fr]">
   <div class="space-y-2">
-    <img src="/incidents/{{ inc.id }}/crop.jpg" alt="Decupajul obiectului" class="w-full rounded-field bg-base-300">
-    <img src="/incidents/{{ inc.id }}/snapshot.jpg" alt="Cadrul complet în momentul detecției" class="w-full rounded-field" onerror="this.remove()">
+    <img src="/incidents/{{ inc.id }}/crop.jpg" alt="Decupajul obiectului" class="aspect-square w-full rounded-box bg-base-300 object-cover">
+    <img src="/incidents/{{ inc.id }}/snapshot.jpg" alt="Cadrul complet în momentul detecției" class="w-full rounded-box" onerror="this.remove()">
   </div>
-  <div class="space-y-4">
-    <div class="space-y-1">
-      <p class="text-lg font-semibold first-letter:uppercase">{{ inc.object_class }} · risc {{ inc.risk }}</p>
-      {% if inc.ai_description %}<p class="text-sm text-base-content/70">{{ inc.ai_description }}</p>{% endif %}
-      <p class="text-sm text-base-content/70">
-        Pista {{ settings.runway_name }} · Sector {{ inc.sector or "—" }}
-        {% if inc.runway_distance_m is not none %} · {{ inc.runway_distance_m | round | int }} m de pragul 09{% endif %}
-        {% if inc.size_estimate_cm is not none %} · ~{{ inc.size_estimate_cm | round(1) }} cm{% endif %}
-      </p>
-      <p class="text-sm">Stare: <span class="font-medium">{{ inc.display_status() }}</span>{% if not inc.object_present %} · obiect dispărut{% endif %}</p>
+  <div class="space-y-5">
+    <div class="space-y-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="risk-tag" data-tone="{{ risk_tone.get(inc.risk, 'info') }}">risc {{ inc.risk }}</span>
+        <span class="badge badge-sm">{{ inc.display_status() }}</span>
+        {% if not inc.object_present %}<span class="badge badge-ghost badge-sm">obiect dispărut</span>{% endif %}
+      </div>
+      <p class="text-2xl font-bold first-letter:uppercase">{{ inc.object_class }}</p>
+      {% if inc.ai_description %}
+      <p class="flex gap-2 rounded-field border border-accent/30 bg-accent/8 px-3 py-2 text-sm text-base-content/80">{{ icon("sparkle", "mt-0.5 text-accent") }}<span>{{ inc.ai_description }}</span></p>
+      {% endif %}
+      <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div><dt class="eyebrow">Sector</dt><dd class="readout text-xl font-bold text-primary">{{ inc.sector or "—" }}</dd></div>
+        <div><dt class="eyebrow">De la prag 09</dt><dd class="readout text-xl font-semibold">{{ (inc.runway_distance_m | round | int ~ " m") if inc.runway_distance_m is not none else "—" }}</dd></div>
+        <div><dt class="eyebrow">Față de ax</dt><dd class="readout text-xl font-semibold">{{ ("%+.0f m" | format(inc.centerline_offset_m)) if inc.centerline_offset_m is not none else "—" }}</dd></div>
+        <div><dt class="eyebrow">Mărime</dt><dd class="readout text-xl font-semibold">{{ ("~" ~ (inc.size_estimate_cm | round(1)) ~ " cm") if inc.size_estimate_cm is not none else "—" }}</dd></div>
+      </dl>
     </div>
 
     {% if timings %}
-    <dl class="flex flex-wrap gap-x-6 gap-y-2 rounded-field border border-base-300 bg-base-100 px-3 py-2">
+    <dl class="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {% for label, value in timings %}
-      <div>
-        <dt class="text-xs text-base-content/60">{{ label }}</dt>
-        <dd class="readout text-lg font-semibold">{{ value }}</dd>
+      <div class="kpi px-3 py-2">
+        <dt>{{ label }}</dt>
+        <dd class="text-lg">{{ value }}</dd>
       </div>
       {% endfor %}
     </dl>
     {% endif %}
 
-    <ol class="relative space-y-2.5 border-l border-base-300 pl-4" aria-label="Cronologia incidentului">
-      {% for e in events %}
-      <li class="flex flex-wrap items-baseline gap-x-2">
-        <span class="absolute -left-[5px] mt-1.5 size-2.5 rounded-full {{ 'bg-success' if e.action == 'resolve' else 'bg-error' if e.action == 'detected' else 'bg-primary' }}"></span>
-        <span class="readout text-sm text-primary">{{ e.at | time }}</span>
-        <span class="text-sm">{{ e.label }}</span>
-        {% if e.offset and e.action != 'detected' %}<span class="readout text-xs text-base-content/60">+{{ e.offset }}</span>{% endif %}
-        {% if e.note %}<span class="w-full text-xs text-base-content/60">{{ e.note }}</span>{% endif %}
-      </li>
-      {% endfor %}
-    </ol>
+    <div>
+      <p class="eyebrow mb-3">Cronologie</p>
+      <ol class="relative space-y-3 border-l border-line pl-5" aria-label="Cronologia incidentului">
+        {% for e in events %}
+        <li class="flex flex-wrap items-baseline gap-x-2">
+          <span class="absolute -left-[6px] mt-1.5 size-3 rounded-full border-2 border-panel {{ 'bg-success' if e.action == 'resolve' else 'bg-error' if e.action == 'detected' else 'bg-accent' if e.action == 'ai_description' else 'bg-primary' }}"></span>
+          <span class="readout text-sm text-primary">{{ e.at | time }}</span>
+          <span class="text-sm font-medium">{{ e.label }}</span>
+          {% if e.offset and e.action != 'detected' %}<span class="readout text-xs text-base-content/50">+{{ e.offset }}</span>{% endif %}
+          {% if e.note %}<span class="w-full text-xs text-base-content/55">{{ e.note }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
   </div>
 </div>

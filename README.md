@@ -16,7 +16,7 @@ Cerințe: Python 3.14 (testat; 3.12+ merge), Node.js (doar pentru compilarea CSS
 cd RunwayEye
 py -3.14 -m venv venv
 venv\Scripts\python -m pip install -r requirements.txt   # ~5 min (torch, ultralytics)
-npm install                                              # Tailwind + DaisyUI + HTMX + Alpine, compilate local
+npm install                                              # Tailwind, DaisyUI, HTMX, Alpine și fonturile, toate locale
 copy .env.example .env                                   # apoi verificați VIDEO_SOURCE
 start_demo.bat
 ```

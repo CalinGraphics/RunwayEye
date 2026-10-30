@@ -1,16 +1,23 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 {% block title %}RunwayEye · Echipa de intervenție{% endblock %}
 {% block head %}
-<meta name="theme-color" content="#0a0e13">
+<meta name="theme-color" content="#07090d">
 {% endblock %}
 {% block body_class %}min-h-dvh select-none bg-base-100 text-base-content{% endblock %}
 {% block body %}
-<div x-data='teamPage({{ {"runway": settings.runway_name} | tojson }})' class="flex min-h-dvh flex-col"
-     :class="{ 'phone-alarm text-white': armed && mode === 'alarm', 'bg-warning text-warning-content': armed && mode === 'enroute' }">
+<div x-data='teamPage({{ {"runway": settings.runway_name} | tojson }})' class="mx-auto flex min-h-dvh max-w-lg flex-col"
+     :class="{ 'phone-alarm text-white': armed && mode === 'alarm', 'bg-primary text-primary-content': armed && mode === 'enroute' }">
 
-  <div class="flex items-center justify-between px-4 py-2 text-xs" :class="mode === 'calm' || !armed ? 'border-b border-base-300' : 'bg-black/20'">
-    <span class="flex items-center gap-2 font-semibold tracking-[0.2em]"><span class="brand-mark size-3.5" aria-hidden="true"></span>RUNWAYEYE · ECHIPĂ</span>
-    <span class="flex items-center gap-1.5" role="status">
+  <div class="flex items-center justify-between px-4 py-3" :class="armed && mode !== 'calm' ? 'bg-black/20' : 'border-b border-line'">
+    <span class="flex items-center gap-2.5">
+      <span class="brand-mark size-7" aria-hidden="true"></span>
+      <span class="flex flex-col leading-tight">
+        <span class="text-sm font-extrabold tracking-[0.08em]">Echipa de intervenție</span>
+        <span class="font-mono text-[0.65rem] opacity-60">RunwayEye · pista {{ settings.runway_name }}</span>
+      </span>
+    </span>
+    <span class="flex items-center gap-1.5 rounded-full bg-black/25 px-2.5 py-1 text-xs" role="status">
       <span class="size-2 rounded-full" :class="connected ? 'bg-success' : 'bg-error animate-pulse'"></span>
       <span x-text="connected ? 'Conectat' : 'Reconectare…'">Reconectare…</span>
     </span>
@@ -22,56 +29,70 @@
 
   {# Browsers block sound and vibration until the first tap. #}
   <template x-if="!armed">
-    <div class="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
-      <svg class="size-16 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <div class="bg-grid flex flex-1 flex-col items-center justify-center gap-7 p-6 text-center">
+      <div class="radar" data-tone="primary" aria-hidden="true"></div>
       <div>
-        <h1 class="text-2xl font-bold">Echipa de intervenție</h1>
-        <p class="mt-1 text-base-content/70">Pista {{ settings.runway_name }}</p>
+        <h1 class="text-3xl font-extrabold">Pregătit de tură?</h1>
+        <p class="mt-2 text-base-content/65">O singură atingere permite telefonului să sune și să vibreze la alertă.</p>
       </div>
-      <button class="btn btn-primary h-auto w-full max-w-xs py-8 text-2xl" @click="arm()">Activează alertele</button>
-      <p class="max-w-xs text-sm text-base-content/60">O singură atingere permite telefonului să sune și să vibreze la alertă. Lasă pagina deschisă, cu ecranul pornit.</p>
-      <p x-show="incidents.length" x-cloak class="rounded-field border border-warning/50 bg-warning/10 px-3 py-1.5 text-warning"
+      <button class="big-action btn-primary w-full" @click="arm()">{{ icon("bell", "size-7") }} Activează alertele</button>
+      <p class="text-sm text-base-content/50">Lasă pagina deschisă, cu ecranul pornit.</p>
+      <p x-show="incidents.length" x-cloak class="risk-tag" data-tone="warning"
          x-text="incidents.length + (incidents.length === 1 ? ' alertă deschisă acum' : ' alerte deschise acum')"></p>
     </div>
   </template>
 
   <template x-if="armed && mode === 'calm'">
-    <div class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-      <svg class="size-24 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.6 2.6L16.5 9"/></svg>
-      <p class="text-4xl font-bold text-success">Pista curată</p>
-      <p class="text-base-content/70">Pista {{ settings.runway_name }} · aștept alerte</p>
-      <p class="max-w-xs text-sm text-base-content/60">La o alertă, ecranul se face roșu, telefonul sună și vibrează.</p>
+    <div class="bg-grid flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">
+      <div class="radar w-64" aria-hidden="true"></div>
+      <div>
+        <p class="text-4xl font-extrabold text-success">Pistă liberă</p>
+        <p class="mt-2 text-base-content/60">Pista {{ settings.runway_name }} · aștept alerte</p>
+      </div>
+      <p class="max-w-xs text-sm text-base-content/50">La o alertă ecranul se face roșu, telefonul sună și vibrează.</p>
     </div>
   </template>
 
   <template x-if="armed && current">
     <div class="flex flex-1 flex-col gap-4 p-4" role="alert" aria-live="assertive">
       <div class="flex items-center justify-between">
-        <p class="text-sm font-semibold uppercase tracking-[0.2em]" x-text="mode === 'alarm' ? 'Alertă nouă' : 'Echipă în drum'"></p>
-        <span class="rounded-field bg-black/25 px-2.5 py-1 text-sm font-bold uppercase" x-text="'risc ' + current.risk"></span>
+        <p class="flex items-center gap-2 font-mono text-sm font-bold tracking-[0.2em] uppercase">
+          <span x-show="mode === 'alarm'">{{ icon("alert", "size-5") }}</span>
+          <span x-text="mode === 'alarm' ? 'Alertă FOD' : 'Echipă în drum'"></span>
+        </p>
+        <span class="rounded-full bg-black/30 px-3 py-1 font-mono text-xs font-bold tracking-wider uppercase" x-text="'risc ' + current.risk"></span>
       </div>
-      <img :src="current.crop_url" alt="Obiectul detectat" class="mx-auto aspect-square w-full max-w-xs rounded-box border-4 border-white/70 bg-black/30 object-cover">
-      <p class="text-center text-2xl font-bold leading-snug first-letter:uppercase" x-text="current.object_class"></p>
-      <div class="grid grid-cols-2 gap-2 text-center">
-        <div class="rounded-box bg-black/20 p-2">
-          <p class="text-xs opacity-80">Sector</p>
-          <p class="readout text-3xl font-bold" x-text="current.sector || '—'"></p>
+
+      <div class="grid grid-cols-[1fr_auto] items-center gap-4 rounded-box bg-black/25 p-4">
+        <div class="min-w-0">
+          <p class="font-mono text-xs tracking-[0.2em] uppercase opacity-75">Sector</p>
+          <p class="readout text-7xl leading-none font-extrabold" x-text="current.sector || '—'"></p>
+          <p class="mt-2 text-xl leading-snug font-bold first-letter:uppercase" x-text="current.object_class"></p>
         </div>
-        <div class="rounded-box bg-black/20 p-2">
-          <p class="text-xs opacity-80">De la detecție</p>
+        <img :src="current.crop_url" alt="Obiectul detectat" class="size-32 rounded-box border-4 border-white/70 bg-black/30 object-cover">
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-center">
+        <div class="rounded-box bg-black/20 p-3">
+          <p class="text-xs opacity-75">De la detecție</p>
           <p class="readout text-3xl font-bold" x-text="elapsed(current)"></p>
         </div>
+        <div class="rounded-box bg-black/20 p-3">
+          <p class="text-xs opacity-75">Poziție</p>
+          <p class="text-sm leading-snug font-semibold" x-text="current.runway_distance_m != null ? position(current) : 'necalibrată'"></p>
+        </div>
       </div>
-      <p class="text-center text-sm opacity-90" x-text="'Pista ' + cfg.runway + ' · ' + position(current)"></p>
+      <p x-show="current.ai_description" class="rounded-box bg-black/20 p-3 text-sm" x-text="current.ai_description"></p>
       <p x-show="!current.object_present" class="text-center text-sm font-semibold">Obiectul nu mai e vizibil pe cameră</p>
 
-      <div class="mt-auto flex flex-col gap-3 pb-2">
+      <div class="mt-auto flex flex-col gap-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <p x-show="error" class="rounded-box bg-black/40 p-2 text-center text-sm" x-text="error"></p>
         <template x-if="mode === 'alarm'">
-          <button class="btn h-auto border-0 bg-white py-6 text-2xl text-red-700 hover:bg-white" :disabled="busy" @click="act('ack')">Am preluat</button>
+          <button class="big-action border-0 bg-white text-red-700 hover:bg-white" :disabled="busy" @click="act('ack')">Am preluat</button>
         </template>
-        <button class="btn h-auto py-6 text-2xl" :class="mode === 'alarm' ? 'btn-outline border-white text-white' : 'btn-success'" :disabled="busy" @click="act('resolve')">Obiect eliminat</button>
-        <p x-show="others > 0" class="text-center text-sm opacity-90" x-text="'+ ' + others + (others === 1 ? ' altă alertă deschisă' : ' alte alerte deschise')"></p>
+        <button class="big-action" :class="mode === 'alarm' ? 'btn-outline border-2 border-white text-white hover:bg-white/10' : 'border-0 bg-black text-white hover:bg-black/85'"
+                :disabled="busy" @click="act('resolve')">{{ icon("check", "size-7") }} Obiect eliminat</button>
+        <p x-show="others > 0" class="text-center text-sm font-medium opacity-90" x-text="'+ ' + others + (others === 1 ? ' altă alertă deschisă' : ' alte alerte deschise')"></p>
       </div>
     </div>
   </template>

@@ -11,10 +11,12 @@
     "postinstall": "npm run build"
   },
   "devDependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@tailwindcss/cli": "^4.1.0",
-    "tailwindcss": "^4.1.0",
+    "alpinejs": "^3.14.0",
     "daisyui": "^5.0.0",
     "htmx.org": "^2.0.0",
-    "alpinejs": "^3.14.0"
+    "tailwindcss": "^4.1.0"
   }
 }

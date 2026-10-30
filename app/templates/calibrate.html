@@ -1,4 +1,5 @@
-{% extends "base.html" %}
+{% extends "layout.html" %}
+{% from "partials/icons.html" import icon %}
 {% block title %}RunwayEye · Calibrare{% endblock %}
 {% block head %}
 <script>
@@ -64,26 +65,26 @@
   });
 </script>
 {% endblock %}
-{% block body %}
 {% set active = "calibrate" %}
-{% include "partials/nav.html" %}
+{% block page_title %}Calibrarea pistei{% endblock %}
+{% block content %}
 {% set cfg = {"names": corner_names, "corners": corners, "size": frame_size} %}
-<main class="mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]" x-data='calibrator({{ cfg | tojson }})'>
-  <section class="panel">
-    <div class="panel-title">
-      <span>Cadru de la cameră · dă clic pe colțurile pistei</span>
-      <button class="btn btn-ghost btn-xs normal-case tracking-normal" @click="stamp = Date.now()">Cadru nou</button>
+<main class="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_340px]" x-data='calibrator({{ cfg | tojson }})'>
+  <section class="panel overflow-hidden">
+    <div class="panel-head">
+      <h2>Cadru de la cameră · atinge colțurile pistei</h2>
+      <button class="btn btn-ghost btn-sm" @click="stamp = Date.now()">{{ icon("refresh") }} Cadru nou</button>
     </div>
-    <div class="p-3">
-      <div class="relative cursor-crosshair select-none" @click="add($event)">
+    <div class="bg-black p-2 sm:p-3">
+      <div class="relative cursor-crosshair touch-manipulation select-none" @click="add($event)">
         <img :src="'/snapshot?raw=1&t=' + stamp" @load="loaded($event)" alt="Cadru curent de la cameră" class="block w-full rounded-field" draggable="false">
         {# .camel: HTML lowercases attribute names, and SVG only understands "viewBox". #}
         <svg class="pointer-events-none absolute inset-0 size-full" :view-box.camel="`0 0 ${w} ${h}`" preserveAspectRatio="none">
-          <polygon x-show="points.length > 1" :points="polygon" fill="rgba(62,199,224,0.15)" stroke="#3ec7e0" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <polygon x-show="points.length > 1" :points="polygon" fill="rgba(63,205,238,0.16)" stroke="#3fcdee" stroke-width="2" vector-effect="non-scaling-stroke"/>
         </svg>
         {# Corner markers as HTML: Alpine's x-for can't clone <template> inside SVG. #}
         <template x-for="(p, i) in points" :key="i">
-          <span class="pointer-events-none absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-base-100 bg-primary text-xs font-bold text-primary-content"
+          <span class="pointer-events-none absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-black bg-primary font-mono text-xs font-bold text-primary-content shadow-lg"
                 :style="`left:${p[0] / w * 100}%;top:${p[1] / h * 100}%`" x-text="i + 1"></span>
         </template>
       </div>
@@ -92,18 +93,18 @@
 
   <aside class="space-y-4">
     <div class="panel">
-      <div class="panel-title"><span>Ordinea colțurilor</span><span class="readout text-base-content" x-text="points.length + '/4'"></span></div>
+      <div class="panel-head"><h2>Ordinea colțurilor</h2><span class="readout text-sm font-bold text-base-content" x-text="points.length + '/4'"></span></div>
       <ol class="space-y-1 p-3 text-sm">
         <template x-for="(name, i) in names" :key="i">
-          <li class="flex items-center gap-2 rounded-field px-2 py-1.5"
-              :class="i === points.length ? 'bg-primary/15 text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/40'">
-            <span class="readout flex size-5 items-center justify-center rounded-full border text-xs"
+          <li class="flex items-center gap-2.5 rounded-field px-2.5 py-2"
+              :class="i === points.length ? 'bg-primary/12 text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/40'">
+            <span class="readout flex size-6 items-center justify-center rounded-full border text-xs"
                   :class="i < points.length ? 'border-primary bg-primary text-primary-content' : 'border-current'" x-text="i + 1"></span>
             <span class="first-letter:uppercase" x-text="name"></span>
           </li>
         </template>
       </ol>
-      <div class="flex gap-2 border-t border-base-300 p-3">
+      <div class="flex gap-2 border-t border-line p-3">
         <button class="btn btn-sm btn-ghost" @click="undo()" :disabled="!points.length">Înapoi</button>
         <button class="btn btn-sm btn-ghost" @click="clear()" :disabled="!points.length">Reia</button>
         <button class="btn btn-sm btn-primary ml-auto" @click="save()" :disabled="points.length !== 4">Salvează</button>
@@ -111,9 +112,9 @@
       <p x-show="message" x-cloak class="px-3 pb-3 text-sm" :class="error ? 'text-error' : 'text-success'" x-text="message"></p>
     </div>
 
-    <div class="panel p-3 text-sm text-base-content/70">
-      <p class="mb-2 font-medium text-base-content">Cum se calibrează</p>
-      <ul class="list-disc space-y-1 pl-4">
+    <div class="panel p-4 text-sm text-base-content/70">
+      <p class="eyebrow mb-2">Cum se calibrează</p>
+      <ul class="list-disc space-y-1.5 pl-4">
         <li>„Stânga” și „dreapta” sunt văzute de la pragul 09, privind spre pragul 27.</li>
         <li>Poligonul devine masca pistei: ce e în afara lui nu dă alerte.</li>
         <li>Pista: {{ geometry.length_m | round | int }} m × {{ geometry.width_m | round | int }} m, {{ geometry.sectors_along }} × {{ geometry.sectors_across }} sectoare (valori din <span class="readout">.env</span>, de verificat).</li>
@@ -122,7 +123,7 @@
         {% endif %}
         <li>Nu mutați camera după calibrare. Marcați poziția machetei cu bandă pe masă.</li>
       </ul>
-      <button class="btn btn-xs btn-ghost mt-3 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
+      <button class="btn btn-sm btn-ghost mt-3 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
     </div>
   </aside>
 </main>

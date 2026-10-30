@@ -1,35 +1,37 @@
-{% extends "base.html" %}
+{% extends "layout.html" %}
+{% from "partials/icons.html" import icon %}
 {% block title %}RunwayEye · Test upload{% endblock %}
-{% block body %}
 {% set active = "upload" %}
-{% include "partials/nav.html" %}
-<main class="mx-auto max-w-6xl space-y-4 p-4">
-  <div>
-    <h1 class="text-xl font-semibold">Test pe o poză sau un clip</h1>
-    <p class="text-sm text-base-content/70">Rezultatul apare doar aici: nu se creează incidente și nu se trimit alerte.</p>
-  </div>
+{% block page_title %}Test pe o poză sau un clip{% endblock %}
+{% block content %}
+<main class="space-y-4 p-4 sm:p-6">
+  <p class="text-sm text-base-content/60">Rezultatul apare doar aici: nu se creează incidente și nu se trimit alerte.</p>
 
-  <form class="panel grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end" hx-post="/upload" hx-encoding="multipart/form-data"
-        hx-target="#upload-result" hx-indicator="#upload-busy" hx-disabled-elt="find button">
-    <div class="space-y-3">
-      <label class="flex flex-col gap-1.5 text-sm">
-        Fișier
-        <input type="file" name="file" required accept="image/*,video/*" class="file-input file-input-sm w-full max-w-md">
+  <form class="panel grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_260px]" hx-post="/upload" hx-encoding="multipart/form-data"
+        hx-target="#upload-result" hx-indicator="#upload-busy" hx-disabled-elt="find button" x-data="{ name: '' }">
+    <div class="space-y-4">
+      <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-box border-2 border-dashed border-line bg-base-100 px-4 py-10 text-center transition-colors hover:border-primary/60">
+        {{ icon("upload", "size-8 text-primary") }}
+        <span class="font-semibold" x-text="name || 'Alege o poză sau un clip'">Alege o poză sau un clip</span>
+        <span class="text-xs text-base-content/50">JPG, PNG, MP4… · clipurile se analizează cel mult 2 minute</span>
+        <input type="file" name="file" required accept="image/*,video/*" class="sr-only" @change="name = $event.target.files[0]?.name || ''">
       </label>
       <label class="flex cursor-pointer items-start gap-2 text-sm">
-        <input type="checkbox" name="use_calibration" value="true" class="checkbox checkbox-sm mt-0.5">
-        <span>Folosește calibrarea camerei <span class="text-base-content/60">(doar dacă clipul e filmat din același loc)</span></span>
+        <input type="checkbox" name="use_calibration" value="true" class="checkbox checkbox-sm checkbox-primary mt-0.5">
+        <span>Folosește calibrarea camerei <span class="text-base-content/50">(doar dacă e filmat din același loc)</span></span>
       </label>
-      <ul class="space-y-0.5 text-sm text-base-content/70">
-        <li><span class="font-medium text-base-content">Poză:</span> doar modelul YOLO (detecția schimbărilor are nevoie de imaginea pistei curate).</li>
-        <li><span class="font-medium text-base-content">Clip:</span> ambele straturi; primele secunde trebuie să arate pista curată. Se analizează cel mult 2 minute.</li>
-      </ul>
     </div>
-    <div class="flex items-center gap-3">
-      <span id="upload-busy" class="htmx-indicator flex items-center gap-2 text-sm text-base-content/70">
-        <span class="loading loading-spinner loading-sm"></span> Analizez…
-      </span>
-      <button class="btn btn-primary">Analizează</button>
+    <div class="flex flex-col justify-between gap-4">
+      <ul class="space-y-2 text-sm text-base-content/70">
+        <li><span class="font-semibold text-base-content">Poză:</span> doar modelul YOLO (detecția schimbărilor are nevoie de imaginea pistei curate).</li>
+        <li><span class="font-semibold text-base-content">Clip:</span> ambele straturi; primele secunde trebuie să arate pista curată.</li>
+      </ul>
+      <div class="flex flex-col gap-2">
+        <button class="btn btn-primary w-full">Analizează</button>
+        <span id="upload-busy" class="htmx-indicator flex items-center justify-center gap-2 text-sm text-base-content/70">
+          <span class="loading loading-spinner loading-sm"></span> Analizez…
+        </span>
+      </div>
     </div>
   </form>
 

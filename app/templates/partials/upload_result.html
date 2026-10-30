@@ -1,38 +1,38 @@
-{% set risk_badge = {"critic": "badge-error", "mediu": "badge-warning", "de verificat": "badge-info"} %}
+{% set risk_tone = {"critic": "error", "mediu": "warning"} %}
 {% if r.error %}
 <div role="alert" class="alert alert-warning">
   <span>{{ r.error }}</span>
 </div>
 {% else %}
-<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-  <div class="panel">
-    <div class="panel-title">
-      <span>{{ r.filename }}</span>
-      <span class="normal-case tracking-normal">{{ r.kind }}{% if r.seconds %} · {{ r.seconds }} s · {{ r.frames }} cadre{% endif %}{% if r.truncated %} · analizat doar începutul{% endif %}</span>
+<div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+  <div class="panel overflow-hidden">
+    <div class="panel-head">
+      <h2>{{ r.filename }}</h2>
+      <span class="readout text-xs text-base-content/60">{{ r.kind }}{% if r.seconds %} · {{ r.seconds }} s · {{ r.frames }} cadre{% endif %}{% if r.truncated %} · doar începutul{% endif %}</span>
     </div>
-    <img src="{{ r.image }}" alt="Rezultatul detecției" class="w-full rounded-b-box">
+    <img src="{{ r.image }}" alt="Rezultatul detecției" class="w-full bg-black">
   </div>
   <div class="panel">
-    <div class="panel-title"><span>Detecții</span><span class="readout text-base-content">{{ r.rows | length }}</span></div>
+    <div class="panel-head"><h2>Detecții</h2><span class="readout text-sm font-bold text-base-content">{{ r.rows | length }}</span></div>
     {% if r.rows %}
-    <ul class="divide-y divide-base-300">
+    <ul class="divide-y divide-line">
       {% for row in r.rows %}
       <li class="flex items-center gap-3 p-3">
         {% if row.crop %}<img src="{{ row.crop }}" alt="" class="size-14 rounded-field object-cover">{% endif %}
         <div class="min-w-0 flex-1">
-          <p class="font-medium first-letter:uppercase">{{ row.object_class }}</p>
-          <p class="text-xs text-base-content/60">
+          <p class="font-semibold first-letter:uppercase">{{ row.object_class }}</p>
+          <p class="text-xs text-base-content/55">
             {{ (row.confidence * 100) | round | int }}%
-            {% if row.sector %} · Sector {{ row.sector }}{% endif %}
+            {% if row.sector %} · Sector <span class="readout text-primary">{{ row.sector }}</span>{% endif %}
             {% if row.time_s is not none %} · la {{ row.time_s }} s{% endif %}
           </p>
         </div>
-        <span class="badge badge-sm {{ risk_badge.get(row.risk, '') }}">{{ row.risk }}</span>
+        <span class="risk-tag" data-tone="{{ risk_tone.get(row.risk, 'info') }}">{{ row.risk }}</span>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p class="p-6 text-center text-sm text-base-content/50">Niciun obiect detectat.</p>
+    <p class="p-8 text-center text-sm text-base-content/50">Niciun obiect detectat.</p>
     {% endif %}
   </div>
 </div>
