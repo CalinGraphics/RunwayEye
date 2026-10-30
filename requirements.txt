@@ -1,0 +1,25 @@
+# Web
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic-settings>=2.4
+jinja2>=3.1
+python-multipart>=0.0.9
+
+# Vision
+numpy>=2.0
+opencv-python>=4.10
+pillow>=10.4
+ultralytics>=8.3
+
+# Data
+supabase>=2.10
+
+# Phone page QR code (pure Python, SVG output)
+qrcode>=7.4
+
+# Bonus (only used when ENABLE_CLAUDE=true)
+anthropic>=0.40
+
+# Tests
+pytest>=8.0
+httpx>=0.27

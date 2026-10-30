@@ -1,0 +1,298 @@
+@import "tailwindcss";
+
+@source "../../templates";
+@source "../js";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* Control-tower dark theme: near-black blue, aviation amber, cyan instruments. */
+@plugin "daisyui/theme" {
+  name: "tower";
+  default: true;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #0a0e13;
+  --color-base-200: #0f151c;
+  --color-base-300: #1c2732;
+  --color-base-content: #d5dde7;
+  --color-primary: #f2a900;
+  --color-primary-content: #1a1300;
+  --color-secondary: #3ec7e0;
+  --color-secondary-content: #031418;
+  --color-accent: #6ee7b7;
+  --color-accent-content: #04130d;
+  --color-neutral: #1c2834;
+  --color-neutral-content: #c7d2de;
+  --color-info: #3ec7e0;
+  --color-info-content: #031418;
+  --color-success: #34d399;
+  --color-success-content: #03150e;
+  --color-warning: #f59e0b;
+  --color-warning-content: #1a1000;
+  --color-error: #ef4444;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, "SFMono-Regular", monospace;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-base-100);
+  }
+  body {
+    font-feature-settings: "tnum" 1;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-base-300) transparent;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 35%, transparent);
+    color: var(--color-base-content);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+  }
+  a.link {
+    text-underline-offset: 3px;
+  }
+  [x-cloak] {
+    display: none !important;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-box border border-base-300 bg-base-200;
+  }
+  .panel-title {
+    @apply flex items-center justify-between gap-2 border-b border-base-300 px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-base-content/70;
+  }
+  .panel-title > h2 {
+    @apply min-w-0 truncate font-semibold;
+  }
+  .readout {
+    @apply font-mono tabular-nums;
+  }
+  .icon {
+    @apply size-4 shrink-0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .status-chip {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-field border border-base-300 bg-base-100 px-2 py-0.5 text-xs whitespace-nowrap text-base-content/80;
+  }
+  .status-dot {
+    @apply inline-block size-2 rounded-full;
+  }
+
+  /* Radar-scope mark: ring + amber centre. */
+  .brand-mark {
+    @apply relative inline-block size-4 rounded-full border-2 border-primary;
+  }
+  .brand-mark::after {
+    content: "";
+    @apply absolute inset-[3px] rounded-full bg-primary;
+  }
+
+  /* The one answer an operations officer looks for first: is the runway usable? */
+  .runway-state {
+    --tone: var(--color-success);
+    @apply inline-flex items-center gap-2 rounded-field border px-3 py-1 text-sm font-semibold;
+    color: var(--tone);
+    border-color: color-mix(in oklab, var(--tone) 45%, transparent);
+    background: color-mix(in oklab, var(--tone) 10%, transparent);
+    transition:
+      color 200ms,
+      background-color 200ms,
+      border-color 200ms;
+  }
+  .runway-state .status-dot {
+    background: var(--tone);
+  }
+  .runway-state[data-tone="warning"] {
+    --tone: var(--color-warning);
+  }
+  .runway-state[data-tone="info"] {
+    --tone: var(--color-info);
+  }
+  .runway-state[data-tone="error"] {
+    color: var(--color-error-content);
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+  .runway-state[data-tone="error"] .status-dot {
+    background: currentColor;
+  }
+
+  .incident {
+    @apply rounded-box border border-base-300 bg-base-100 p-2.5;
+    transition:
+      border-color 150ms,
+      background-color 150ms;
+  }
+  .incident[data-tone="error"] {
+    border-color: color-mix(in oklab, var(--color-error) 55%, transparent);
+    background: color-mix(in oklab, var(--color-error) 5%, var(--color-base-100));
+  }
+  .incident[data-tone="warning"] {
+    border-color: color-mix(in oklab, var(--color-warning) 40%, transparent);
+  }
+  .incident[data-hl="true"] {
+    border-color: var(--color-secondary);
+  }
+
+  .map-marker {
+    --tone: var(--color-info);
+    @apply absolute size-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full;
+  }
+  .map-marker[data-tone="error"] {
+    --tone: var(--color-error);
+  }
+  .map-marker[data-tone="warning"] {
+    --tone: var(--color-warning);
+  }
+  .map-marker-dot {
+    @apply absolute inset-[3px] rounded-full;
+    background: var(--tone);
+    box-shadow: 0 0 0 2px var(--color-base-100);
+    transition: transform 150ms;
+  }
+  .map-marker-ping {
+    @apply absolute inset-0 rounded-full;
+    background: var(--tone);
+    animation: marker-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  .map-marker[data-hl="true"] .map-marker-dot,
+  .map-marker:hover .map-marker-dot {
+    transform: scale(1.35);
+    box-shadow:
+      0 0 0 2px var(--color-base-100),
+      0 0 0 4px var(--color-secondary);
+  }
+
+  .alarm-banner {
+    @apply flex max-w-3xl items-center gap-4 rounded-box border-2 border-white/80 bg-error px-6 py-4 text-error-content;
+    box-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.7);
+  }
+
+  .modal-backdrop-custom {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6;
+  }
+
+  .toast-item {
+    @apply max-w-sm rounded-box border border-base-300 bg-base-200 px-4 py-2 text-sm;
+    box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  }
+  .toast-item[data-kind="error"] {
+    @apply border-error text-error;
+    background: color-mix(in oklab, var(--color-error) 15%, var(--color-base-200));
+  }
+
+  /* Video frame with corner brackets, like a surveillance monitor. */
+  .monitor {
+    position: relative;
+    background: #000;
+  }
+  .monitor::before,
+  .monitor::after {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-color: color-mix(in oklab, var(--color-secondary) 70%, transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .monitor::before {
+    top: 8px;
+    left: 8px;
+    border-top: 2px solid;
+    border-left: 2px solid;
+  }
+  .monitor::after {
+    right: 8px;
+    bottom: 8px;
+    border-right: 2px solid;
+    border-bottom: 2px solid;
+  }
+}
+
+@keyframes alert-pulse {
+  0%,
+  100% {
+    background-color: rgb(239 68 68 / 0.08);
+    box-shadow: inset 0 0 0 4px rgb(239 68 68 / 0.6);
+  }
+  50% {
+    background-color: rgb(239 68 68 / 0.38);
+    box-shadow: inset 0 0 0 14px rgb(239 68 68 / 0.95);
+  }
+}
+.alert-overlay {
+  animation: alert-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes sector-blink {
+  0%,
+  100% {
+    fill: rgb(239 68 68 / 0.15);
+  }
+  50% {
+    fill: rgb(239 68 68 / 0.75);
+  }
+}
+.sector-alert {
+  animation: sector-blink 0.6s ease-in-out infinite;
+}
+
+@keyframes marker-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes phone-alarm {
+  0%,
+  100% {
+    background-color: #7f1d1d;
+  }
+  50% {
+    background-color: #dc2626;
+  }
+}
+.phone-alarm {
+  animation: phone-alarm 0.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-overlay,
+  .sector-alert,
+  .map-marker-ping,
+  .phone-alarm {
+    animation-duration: 2.4s;
+  }
+}

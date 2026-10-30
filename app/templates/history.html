@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}RunwayEye · Istoric{% endblock %}
+{% block head %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("historyPage", () => ({
+      detail: false,
+      live: false,
+      init() {
+        // New or changed incidents refresh the table in place (same filters, no new browser history entry).
+        const refresh = () => {
+          clearTimeout(this._t);
+          this._t = setTimeout(() => {
+            const form = document.getElementById("history-filters");
+            const query = new URLSearchParams(new FormData(form)).toString();
+            htmx.ajax("GET", `/incidents?${query}`, { target: "#history-table", swap: "innerHTML" });
+          }, 400);
+        };
+        RE.connect(
+          "/events?client=history",
+          { "incident.new": refresh, "incident.updated": refresh },
+          (ok) => (this.live = ok)
+        );
+      },
+    }));
+  });
+</script>
+{% endblock %}
+{% block body %}
+{% set active = "history" %}
+{% include "partials/nav.html" %}
+<main class="mx-auto max-w-7xl space-y-4 p-4" x-data="historyPage()">
+  <div class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold">Istoric incidente</h1>
+      <p class="flex flex-wrap items-center gap-x-3 text-sm text-base-content/70">
+        Fiecare pas al operatorului și al echipei e salvat cu ora.
+        <span class="inline-flex items-center gap-1.5 text-xs" :class="live ? 'text-success' : 'text-base-content/50'">
+          <span class="status-dot" :class="live ? 'bg-success' : 'bg-base-content/30'"></span>
+          <span x-text="live ? 'Se actualizează live' : 'Actualizare live oprită'"></span>
+        </span>
+      </p>
+    </div>
+    <form id="history-filters" class="flex flex-wrap items-end gap-2" hx-get="/incidents" hx-target="#history-table" hx-trigger="change, keyup changed delay:400ms from:input[name=sector]" hx-push-url="true">
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">Perioadă
+        <select name="period" class="select select-sm w-36">
+          {% for value, label in [("hour", "Ultima oră"), ("today", "Azi"), ("week", "7 zile"), ("all", "Tot")] %}
+          <option value="{{ value }}" {{ "selected" if filters.period == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">Stare
+        <select name="status" class="select select-sm w-40">
+          <option value="">Toate</option>
+          <option value="open" {{ "selected" if filters.status == "open" }}>Deschise</option>
+          {% for value, label in status_labels.items() %}
+          <option value="{{ value }}" {{ "selected" if filters.status == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">Risc
+        <select name="risk" class="select select-sm w-36">
+          <option value="">Toate</option>
+          {% for r in ["critic", "mediu", "de verificat"] %}
+          <option value="{{ r }}" {{ "selected" if filters.risk == r }}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-xs text-base-content/70">Sector
+        <input name="sector" value="{{ filters.sector }}" placeholder="ex. C sau C2" class="input input-sm w-28 uppercase">
+      </label>
+    </form>
+  </div>
+
+  <div id="history-table" class="panel overflow-x-auto">
+    {% include "partials/history_table.html" %}
+  </div>
+
+  <div x-show="detail" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-6"
+       @click.self="detail = false" @keydown.escape.window="detail = false" @htmx:after-swap.window="if ($event.detail.target.id === 'incident-detail') detail = true">
+    <div class="panel max-h-[90dvh] w-full max-w-3xl overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="panel-title"><h2 id="detail-title">Detalii incident</h2><button class="btn btn-ghost btn-xs" @click="detail = false">Închide</button></div>
+      <div id="incident-detail" class="p-4"></div>
+    </div>
+  </div>
+</main>
+{% endblock %}

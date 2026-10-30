@@ -1,0 +1,37 @@
+# Secrets
+.env
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Data produced at runtime
+data/videos/
+data/images/
+data/uploads/
+data/*.db
+data/*.db-journal
+data/tuning.json
+data/eval/*.mp4
+data/eval/summary.*
+
+# Model weights (best.pt is copied in manually; pretrained weights are downloaded)
+models/*.pt
+!models/.gitkeep
+*.pt
+
+# Ultralytics run outputs
+runs/
+
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}RunwayEye · Calibrare{% endblock %}
+{% block head %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("calibrator", (cfg) => ({
+      names: cfg.names,
+      points: cfg.corners.map((p) => [p[0], p[1]]),
+      saved: cfg.corners.length === 4,
+      w: cfg.size[0],
+      h: cfg.size[1],
+      stamp: Date.now(),
+      message: "",
+      error: false,
+
+      loaded(e) {
+        this.w = e.target.naturalWidth;
+        this.h = e.target.naturalHeight;
+      },
+      add(e) {
+        if (this.points.length >= 4) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - r.left) * this.w) / r.width;
+        const y = ((e.clientY - r.top) * this.h) / r.height;
+        this.points.push([Math.round(x), Math.round(y)]);
+        this.saved = false;
+      },
+      undo() {
+        this.points.pop();
+        this.saved = false;
+      },
+      clear() {
+        this.points = [];
+        this.saved = false;
+        this.message = "";
+      },
+      get polygon() {
+        return this.points.map((p) => p.join(",")).join(" ");
+      },
+      async save() {
+        try {
+          const r = await RE.post("/calibrate", { corners: this.points });
+          this.saved = true;
+          this.error = false;
+          this.message = r.message + ": sectoarele și metrii apar acum în alerte.";
+        } catch (e) {
+          this.error = true;
+          this.message = e.message;
+        }
+      },
+      async remove() {
+        try {
+          const r = await RE.post("/calibrate/reset");
+          this.points = [];
+          this.saved = false;
+          this.error = false;
+          this.message = r.message;
+        } catch (e) {
+          this.error = true;
+          this.message = e.message;
+        }
+      },
+    }));
+  });
+</script>
+{% endblock %}
+{% block body %}
+{% set active = "calibrate" %}
+{% include "partials/nav.html" %}
+{% set cfg = {"names": corner_names, "corners": corners, "size": frame_size} %}
+<main class="mx-auto grid max-w-7xl gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]" x-data='calibrator({{ cfg | tojson }})'>
+  <section class="panel">
+    <div class="panel-title">
+      <span>Cadru de la cameră · dă clic pe colțurile pistei</span>
+      <button class="btn btn-ghost btn-xs normal-case tracking-normal" @click="stamp = Date.now()">Cadru nou</button>
+    </div>
+    <div class="p-3">
+      <div class="relative cursor-crosshair select-none" @click="add($event)">
+        <img :src="'/snapshot?raw=1&t=' + stamp" @load="loaded($event)" alt="Cadru curent de la cameră" class="block w-full rounded-field" draggable="false">
+        {# .camel: HTML lowercases attribute names, and SVG only understands "viewBox". #}
+        <svg class="pointer-events-none absolute inset-0 size-full" :view-box.camel="`0 0 ${w} ${h}`" preserveAspectRatio="none">
+          <polygon x-show="points.length > 1" :points="polygon" fill="rgba(62,199,224,0.15)" stroke="#3ec7e0" stroke-width="2" vector-effect="non-scaling-stroke"/>
+        </svg>
+        {# Corner markers as HTML: Alpine's x-for can't clone <template> inside SVG. #}
+        <template x-for="(p, i) in points" :key="i">
+          <span class="pointer-events-none absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-base-100 bg-primary text-xs font-bold text-primary-content"
+                :style="`left:${p[0] / w * 100}%;top:${p[1] / h * 100}%`" x-text="i + 1"></span>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <aside class="space-y-4">
+    <div class="panel">
+      <div class="panel-title"><span>Ordinea colțurilor</span><span class="readout text-base-content" x-text="points.length + '/4'"></span></div>
+      <ol class="space-y-1 p-3 text-sm">
+        <template x-for="(name, i) in names" :key="i">
+          <li class="flex items-center gap-2 rounded-field px-2 py-1.5"
+              :class="i === points.length ? 'bg-primary/15 text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/40'">
+            <span class="readout flex size-5 items-center justify-center rounded-full border text-xs"
+                  :class="i < points.length ? 'border-primary bg-primary text-primary-content' : 'border-current'" x-text="i + 1"></span>
+            <span class="first-letter:uppercase" x-text="name"></span>
+          </li>
+        </template>
+      </ol>
+      <div class="flex gap-2 border-t border-base-300 p-3">
+        <button class="btn btn-sm btn-ghost" @click="undo()" :disabled="!points.length">Înapoi</button>
+        <button class="btn btn-sm btn-ghost" @click="clear()" :disabled="!points.length">Reia</button>
+        <button class="btn btn-sm btn-primary ml-auto" @click="save()" :disabled="points.length !== 4">Salvează</button>
+      </div>
+      <p x-show="message" x-cloak class="px-3 pb-3 text-sm" :class="error ? 'text-error' : 'text-success'" x-text="message"></p>
+    </div>
+
+    <div class="panel p-3 text-sm text-base-content/70">
+      <p class="mb-2 font-medium text-base-content">Cum se calibrează</p>
+      <ul class="list-disc space-y-1 pl-4">
+        <li>„Stânga” și „dreapta” sunt văzute de la pragul 09, privind spre pragul 27.</li>
+        <li>Poligonul devine masca pistei: ce e în afara lui nu dă alerte.</li>
+        <li>Pista: {{ geometry.length_m | round | int }} m × {{ geometry.width_m | round | int }} m, {{ geometry.sectors_along }} × {{ geometry.sectors_across }} sectoare (valori din <span class="readout">.env</span>, de verificat).</li>
+        {% if geometry.mockup_length_cm %}
+        <li>Macheta: {{ geometry.mockup_length_cm | round | int }} × {{ geometry.mockup_width_cm | round | int }} cm, pentru estimarea mărimii obiectelor.</li>
+        {% endif %}
+        <li>Nu mutați camera după calibrare. Marcați poziția machetei cu bandă pe masă.</li>
+      </ul>
+      <button class="btn btn-xs btn-ghost mt-3 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
+    </div>
+  </aside>
+</main>
+{% endblock %}

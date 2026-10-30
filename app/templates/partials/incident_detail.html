@@ -1,0 +1,40 @@
+<div class="grid gap-4 md:grid-cols-[220px_1fr]">
+  <div class="space-y-2">
+    <img src="/incidents/{{ inc.id }}/crop.jpg" alt="Decupajul obiectului" class="w-full rounded-field bg-base-300">
+    <img src="/incidents/{{ inc.id }}/snapshot.jpg" alt="Cadrul complet în momentul detecției" class="w-full rounded-field" onerror="this.remove()">
+  </div>
+  <div class="space-y-4">
+    <div class="space-y-1">
+      <p class="text-lg font-semibold first-letter:uppercase">{{ inc.object_class }} · risc {{ inc.risk }}</p>
+      <p class="text-sm text-base-content/70">
+        Pista {{ settings.runway_name }} · Sector {{ inc.sector or "—" }}
+        {% if inc.runway_distance_m is not none %} · {{ inc.runway_distance_m | round | int }} m de pragul 09{% endif %}
+        {% if inc.size_estimate_cm is not none %} · ~{{ inc.size_estimate_cm | round(1) }} cm{% endif %}
+      </p>
+      <p class="text-sm">Stare: <span class="font-medium">{{ inc.display_status() }}</span>{% if not inc.object_present %} · obiect dispărut{% endif %}</p>
+    </div>
+
+    {% if timings %}
+    <dl class="flex flex-wrap gap-x-6 gap-y-2 rounded-field border border-base-300 bg-base-100 px-3 py-2">
+      {% for label, value in timings %}
+      <div>
+        <dt class="text-xs text-base-content/60">{{ label }}</dt>
+        <dd class="readout text-lg font-semibold">{{ value }}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    {% endif %}
+
+    <ol class="relative space-y-2.5 border-l border-base-300 pl-4" aria-label="Cronologia incidentului">
+      {% for e in events %}
+      <li class="flex flex-wrap items-baseline gap-x-2">
+        <span class="absolute -left-[5px] mt-1.5 size-2.5 rounded-full {{ 'bg-success' if e.action == 'resolve' else 'bg-error' if e.action == 'detected' else 'bg-primary' }}"></span>
+        <span class="readout text-sm text-primary">{{ e.at | time }}</span>
+        <span class="text-sm">{{ e.label }}</span>
+        {% if e.offset and e.action != 'detected' %}<span class="readout text-xs text-base-content/60">+{{ e.offset }}</span>{% endif %}
+        {% if e.note %}<span class="w-full text-xs text-base-content/60">{{ e.note }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+</div>

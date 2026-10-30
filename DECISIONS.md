@@ -1,0 +1,1 @@
+﻿- **Export istoric:** CSV cu `;` și virgulă zecimală (plus BOM), ca Excel cu setări românești să-l deschidă direct; folosește filtrele curente ale paginii.
