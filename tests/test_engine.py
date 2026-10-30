@@ -1,3 +1,6 @@
+import cv2
+import numpy as np
+
 from app.vision.calibration import Calibration, RunwayGeometry
 from app.vision.engine import LargeObject, ObjectGone, ObjectReturned
 from app.vision.types import BBox
@@ -190,3 +193,58 @@ def test_yolo_without_change_keeps_source_yolo():
     found = incidents(run(engine, [scene.frame() for _ in range(25)]))
     assert len(found) == 1
     assert found[0].detection.source == "yolo"
+
+
+def _stripes(scene: Scene) -> None:
+    for x in range(60, 260, 24):
+        scene.base[90:150, x : x + 10] = 225
+
+
+def test_shadow_over_markings_raises_no_alert():
+    scene, engine = Scene(), make_engine()
+    _stripes(scene)
+    learn(engine, scene)
+    events = []
+    for i in range(60):
+        frame = scene.frame().astype(np.float32)
+        shade = np.zeros(frame.shape[:2], np.float32)
+        cv2.ellipse(shade, (-60 + i * 7, 120), (70, 50), 0, 0, 360, 1.0, -1)
+        shade = cv2.GaussianBlur(shade, (41, 41), 0)[:, :, None]
+        events += engine.process((frame * (1 - 0.35 * shade)).astype(np.uint8)).events
+    assert incidents(events) == []
+
+
+def test_one_pixel_camera_shake_raises_no_alert():
+    scene, engine = Scene(), make_engine()
+    _stripes(scene)
+    learn(engine, scene)
+    rng = np.random.default_rng(4)
+    frames = [np.roll(scene.frame(), tuple(int(v) for v in rng.integers(-1, 2, 2)), axis=(0, 1)) for _ in range(60)]
+    assert incidents(run(engine, frames)) == []
+
+
+def test_hand_held_still_is_not_the_object():
+    # Dark sleeve from the top edge, the hand itself looks detached from it.
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    arm, hand = (150, 0, 20, 60, 40), (140, 100, 32, 34, 200)
+    assert incidents(run(engine, [scene.frame([arm, hand, BOLT]) for _ in range(20)])) == []
+    found = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    assert len(found) == 1
+    assert abs(found[0].detection.center_px[0] - 157) <= 5
+
+
+def test_object_cut_by_the_frame_edge_is_not_fod():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    assert incidents(run(engine, [scene.frame([(0, 100, 30, 20, 220)]) for _ in range(20)])) == []
+
+
+def test_something_left_at_the_edge_does_not_block_alerts():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    cable = (0, 200, 60, 6, 30)
+    limit = engine.params.large_persist_frames * 5
+    run(engine, [scene.frame([cable]) for _ in range(limit)])
+    found = incidents(run(engine, [scene.frame([cable, BOLT]) for _ in range(15)]))
+    assert len(found) == 1

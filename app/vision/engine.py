@@ -162,6 +162,7 @@ class DetectionEngine:
         self._sites: dict[str, _Site] = {}
         self._yolo_cache: list[Candidate] = []
         self._global_frames = 0
+        self._intrusion_frames = 0
         self._mask_shape: tuple[int, int] | None = None
         self._commands: queue.Queue = queue.Queue()
 
@@ -259,7 +260,15 @@ class DetectionEngine:
         else:
             cands = fuse(change.regions, yolo_boxes)
 
-        for ev in self.tracker.update(cands):
+        # An arm or a vehicle coming in over the edge: wait until it is gone, so the hand that
+        # places an object is never reported as the object. Limited, so something left at
+        # the edge for good can't block the alerts.
+        if change.intrusion or any(r.edge for r in change.regions):
+            self._intrusion_frames += 1
+        else:
+            self._intrusion_frames = 0
+        hold = 0 < self._intrusion_frames <= self.params.large_persist_frames * 5
+        for ev in self.tracker.update(cands, hold=hold):
             events.extend(self._handle(ev.kind, ev.track, frame))
 
         risks = {}

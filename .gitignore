@@ -21,6 +21,9 @@ data/tuning.json
 data/access_key.txt
 data/eval/*.mp4
 data/eval/summary.*
+data/eval_synthetic/
+data/dataset_fod/
+data/dataset_fod.zip
 
 # Model weights (best.pt is copied in manually; pretrained weights are downloaded)
 models/*.pt

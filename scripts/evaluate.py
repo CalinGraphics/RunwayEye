@@ -12,17 +12,20 @@ Annotations: one JSON per clip in data/eval/ (same name as the clip, .json):
     }
 
 `appear_s` = the moment the object is released on the runway; `disappear_s` = picked up
-(optional). The clip is processed frame by frame (not real time), with the same engine and
+(optional). Optional "corners": the 4 runway corners (calibration order) at frame_width;
+without them the saved calibration (data/calibration.json) is used, as in the live app. The clip is processed frame by frame (not real time), with the same engine and
 settings as the live app (.env + data/tuning.json).
 
     python scripts/evaluate.py                # all clips in data/eval/
     python scripts/evaluate.py --no-yolo      # change detection only
+    python scripts/evaluate.py --no-calibration
 """
 
 import argparse
 import json
 import statistics
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -32,9 +35,10 @@ sys.path.insert(0, str(ROOT))
 import cv2  # noqa: E402
 
 from app.config import get_settings  # noqa: E402
+from app.vision.calibration import Calibration  # noqa: E402
 from app.vision.capture import resize_to_width  # noqa: E402
 from app.vision.engine import DetectionEngine, EngineParams, NewIncident  # noqa: E402
-from app.vision.pipeline import TUNABLE  # noqa: E402
+from app.vision.pipeline import TUNABLE, runway_geometry  # noqa: E402
 
 ZONE_MARGIN_PX = 15
 
@@ -50,7 +54,17 @@ def load_params(s) -> EngineParams:
     return params
 
 
-def run_clip(path: Path, ann: dict, s, yolo) -> dict:
+def clip_calibration(ann: dict, s, size: tuple[int, int], use_saved: bool) -> Calibration | None:
+    geometry = runway_geometry(s)
+    if ann.get("corners"):
+        k = s.frame_width / ann.get("frame_width", s.frame_width)
+        return Calibration([(x * k, y * k) for x, y in ann["corners"]], size, geometry)
+    if use_saved:
+        return Calibration.load(s.calibration_file, geometry, size)
+    return None
+
+
+def run_clip(path: Path, ann: dict, s, yolo, use_calibration: bool = True) -> dict:
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
         raise SystemExit(f"Nu pot deschide {path}")
@@ -59,13 +73,19 @@ def run_clip(path: Path, ann: dict, s, yolo) -> dict:
     scale = s.frame_width / ann.get("frame_width", s.frame_width)
     alerts = []
     n = 0
+    busy = 0.0
     while True:
         ok, frame = cap.read()
         if not ok:
             break
         n += 1
         frame = resize_to_width(frame, s.frame_width)
-        for ev in engine.process(frame).events:
+        if n == 1 and use_calibration:
+            engine.set_calibration(clip_calibration(ann, s, (frame.shape[1], frame.shape[0]), use_calibration))
+        t0 = time.perf_counter()
+        result = engine.process(frame)
+        busy += time.perf_counter() - t0
+        for ev in result.events:
             if isinstance(ev, NewIncident):
                 d = ev.detection
                 alerts.append({"t": n / fps, "center": d.center_px, "class_key": d.class_key, "source": d.source})
@@ -96,8 +116,8 @@ def run_clip(path: Path, ann: dict, s, yolo) -> dict:
             "source": a["source"] if a else None,
         })
     false_alarms = [a for i, a in enumerate(alerts) if i not in used]
-    return {"clip": path.name, "synthetic": bool(ann.get("synthetic")), "duration_s": round(duration, 1),
-            "frames": n, "objects": objects, "false_alarms": len(false_alarms),
+    return {"clip": path.name, "about": ann.get("about", ""), "synthetic": bool(ann.get("synthetic")),
+            "duration_s": round(duration, 1), "frames": n, "ms_per_frame": round(busy / max(n, 1) * 1000, 1), "objects": objects, "false_alarms": len(false_alarms),
             "false_alarm_times_s": [round(a["t"], 1) for a in false_alarms]}
 
 
@@ -123,6 +143,7 @@ def summarize(results: list[dict], yolo_name: str) -> dict:
         "latency_median_s": round(statistics.median(lat), 2) if lat else None,
         "latency_max_s": round(max(lat), 2) if lat else None,
         "class_correct": sum(1 for o in known if o["class_key"] == o["label"]),
+        "ms_per_frame": round(statistics.mean(r["ms_per_frame"] for r in results), 1) if results else None,
         "class_total": len(known),
         "per_clip": results,
     }
@@ -148,9 +169,21 @@ def markdown(s: dict) -> str:
         f"| Alarme false | {s['false_alarms']} ({fmt(s['false_alarms_per_hour'], ' / oră')}) |",
         f"| Timp până la alertă (medie / mediană / maxim) | {fmt(s['latency_mean_s'], ' s')} / {fmt(s['latency_median_s'], ' s')} / {fmt(s['latency_max_s'], ' s')} |",
         f"| Clasă corectă (obiecte cunoscute) | {s['class_correct']}/{s['class_total']} |",
+        f"| Timp de procesare pe cadru (pe acest laptop) | {fmt(s['ms_per_frame'], ' ms')} |",
         "",
         "Timpul până la alertă se măsoară de la momentul în care obiectul e lăsat pe pistă (inclusiv retragerea mâinii).",
+        "",
+        "## Pe clipuri",
+        "",
+        "| Clip | Ce testează | Detectate | Alarme false | Timp până la alertă |",
+        "|---|---|---|---|---|",
     ]
+    for r in s["per_clip"]:
+        found = [o for o in r["objects"] if o["detected"]]
+        lat = ", ".join(f"{o['latency_s']} s" for o in found) or "—"
+        missed = [o["label"] for o in r["objects"] if not o["detected"]]
+        note = f" (ratat: {', '.join(missed)})" if missed else ""
+        lines.append(f"| {r['clip']} | {r['about'] or '—'} | {len(found)}/{len(r['objects'])}{note} | {r['false_alarms']} | {lat} |")
     return "\n".join(lines) + "\n"
 
 
@@ -158,6 +191,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default="data/eval")
     ap.add_argument("--no-yolo", action="store_true")
+    ap.add_argument("--no-calibration", action="store_true", help="toată imaginea e considerată pistă")
     args = ap.parse_args()
     s = get_settings()
     folder = ROOT / args.dir
@@ -180,7 +214,7 @@ def main() -> None:
         ann = json.loads(a.read_text(encoding="utf-8"))
         clip = folder / ann.get("clip", a.with_suffix(".mp4").name)
         print(f"· {clip.name} …", flush=True)
-        results.append(run_clip(clip, ann, s, yolo))
+        results.append(run_clip(clip, ann, s, yolo, use_calibration=not args.no_calibration))
 
     summary = summarize(results, yolo_name)
     (folder / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")

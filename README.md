@@ -81,6 +81,9 @@ Fără calibrare, toată imaginea e considerată pistă și alertele nu au secto
 - **Detecția schimbărilor** față de pista curată (butonul **Pista e curată acum**) prinde orice alt obiect, ca „obiect necunoscut”.
 - **Persistență:** alerta pornește doar după `PERSIST_FRAMES` cadre aproape în același loc: mâna care pune obiectul nu dă alarmă.
 - **Obiect mare** (peste `MAX_AREA_PX`): eveniment separat „Vehicul / obiect mare pe pistă”, fără ecran roșu.
+- **Ce nu dă alarmă:** umbrele și schimbările de lumină (se compară cât s-a schimbat zona față de asfaltul din jur),
+  tremurul camerei de un pixel, ce intră pe la marginea imaginii. Cât timp un braț sau un vehicul intră în cadru,
+  nu se confirmă nimic nou; obiectul lăsat apare la ~0,5 s după ce mâna a ieșit.
 - **Alarmă falsă:** zona e învățată ca fundal și nu mai declanșează alerta.
 - Reglaj live (doar cu `DEMO_MODE=true`): **Mai mult → Reglaj detecție**.
 
@@ -107,14 +110,50 @@ Cu `ENABLE_CLAUDE=true` și `ANTHROPIC_API_KEY` în `.env`, fiecare incident nou
 scrisă de Claude pe baza pozei decupate („Un șurub metalic pe axul pistei…”). Apare pe card, în detalii și în cronologie.
 Rulează în fundal: fără internet alerta pleacă la fel, doar fără descriere.
 
-## Evaluarea (cifrele pentru juriu)
+## Cum demonstrăm că merge
+
+Patru niveluri, de la cel mai rapid la cel care contează pentru juriu.
+
+**1. Teste automate** (secunde): `venv\Scripts\python -m pytest`. Logica de detecție, ciclul incidentului, API-ul.
+
+**2. Scenarii grele, generate** (~3 min): pistă desenată în care știm exact când și unde cade fiecare obiect.
 
 ```powershell
-python scripts\annotate_clip.py data\eval\macheta_01.mp4   # marcați momentul și zona fiecărui obiect
+python scripts\make_eval_set.py                                     # 10 clipuri în data/eval_synthetic/
+python scripts\evaluate.py --dir data\eval_synthetic --no-yolo
+```
+
+Testează umbre peste marcaje, lumină care crește lent sau brusc, un vehicul care oprește pe pistă, cameră cu
+zgomot și tremur, obiecte mici sau închise la culoare și o mână care trece fără să lase nimic. Sunt bune ca să
+arătați că sistemul nu dă alarme la astea, dar cifrele **nu** sunt pentru slide (raportul o și spune).
+
+**3. Modelul YOLO** (o dată, ~1 oră în Colab):
+
+1. Descărcați FOD-A (versiunea Pascal VOC, ~400 MB) de la https://github.com/FOD-UNOmaha/FOD-data (licență MIT).
+2. Faceți 150–300 de poze cu obiectele voastre pe machetă (poziții, lumini și înălțimi diferite) și adnotați-le
+   în Roboflow cu exact clasele `surub`, `piulita`, `cheie`, `metal`, `plastic`; export YOLOv8.
+3. `python scripts\fod_to_yolo.py --voc <folder FOD-A> --list` arată clasele din FOD-A și cum se mapează;
+   apoi `python scripts\fod_to_yolo.py --voc <folder FOD-A> --extra <export Roboflow> --zip`.
+4. `data/dataset_fod.zip` → `training/train_colab.ipynb`, varianta B → `best.pt` în `models/` + `metrics.json` (mAP).
+
+**4. Clipuri reale cu macheta: cifrele pentru juriu.** Cu camera fixă, în locul și lumina de la prezentare:
+
+| Clip | Ce faceți |
+|---|---|
+| 3–4 clipuri de 1–2 min | lăsați câte 2–3 obiecte diferite, în sectoare diferite, unul ridicat după un timp |
+| 1 clip | lumina se aprinde / se stinge, apoi cade un obiect |
+| 1 clip | cineva trece prin fața lămpii (umbră) și o mână trece peste pistă fără să lase nimic |
+| 1 clip de 5 min | pistă goală: din el iese rata de alarme false pe oră |
+
+Primele 2 secunde din fiecare clip arată pista curată. Puneți clipurile în `data/eval/`, apoi:
+
+```powershell
+python scripts\annotate_clip.py data\eval\macheta_01.mp4   # momentul și zona fiecărui obiect
 python scripts\evaluate.py                                 # rata de detecție, alarme false/oră, timp până la alertă
 ```
 
-Rezultatul e în `data/eval/summary.md`. mAP-ul modelului vine din notebook-ul de antrenare (`metrics.json`).
+Rezultatul e în `data/eval/summary.md`, cu un tabel pe clipuri. Pe slide: rata de detecție, alarmele false pe oră,
+timpul până la alertă și mAP-ul din `metrics.json`, cu numărul de clipuri și minute din care au ieșit.
 
 ## Dezvoltare
 

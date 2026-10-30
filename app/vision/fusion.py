@@ -112,6 +112,7 @@ class Tracker:
     params: TrackerParams = field(default_factory=TrackerParams)
     tracks: list[Track] = field(default_factory=list)
     _next_id: int = 1
+    _hold: bool = False
 
     def clear(self) -> None:
         self.tracks = []
@@ -123,8 +124,10 @@ class Tracker:
         b = t.cand.bbox
         return max(self.params.match_px, 0.5 * max(b.w, b.h))
 
-    def update(self, cands: list[Candidate]) -> list[TrackEvent]:
+    def update(self, cands: list[Candidate], hold: bool = False) -> list[TrackEvent]:
+        """`hold`: someone reaches into the picture, so nothing new is confirmed until they leave."""
         p = self.params
+        self._hold = hold
         events: list[TrackEvent] = []
 
         # Greedy nearest-neighbour matching within the same kind (small / large).
@@ -191,7 +194,7 @@ class Tracker:
             return
         moved = _dist(c.center, t.anchor) > p.stationary_px
         ratio = c.area / max(1, t.anchor_area)
-        if moved or not (0.5 <= ratio <= 2.0):
+        if moved or not (0.5 <= ratio <= 2.0) or (self._hold and not t.large):
             # Moving or changing shape (e.g. a hand): restart the persistence count.
             t.anchor, t.anchor_area, t.hits = c.center, c.area, 1
         else:

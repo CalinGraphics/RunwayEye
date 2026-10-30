@@ -29,6 +29,7 @@ class Region:
     area: int
     large: bool
     score: float
+    edge: bool = False
 
 
 @dataclass
@@ -37,12 +38,20 @@ class ChangeResult:
     learning: bool = False
     global_change: bool = False
     fg_fraction: float = 0.0
+    intrusion: bool = False
 
 
 _CLOSE_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 _BAND_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 _GHOST_FRAMES = 3
 _PROTECT_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+_SHIFT_KERNEL = np.ones((3, 3), np.uint8)
+_RING_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
+# Small changes this close to a large one belong to it: a hand at the end of an arm,
+# a piece of a vehicle. The sleeve over dark asphalt often doesn't show, so the hand looks detached.
+INTRUSION_PX = 60
+# A shadow or a lamp scales all colours by about the same factor inside and around a region.
+SHADING_LOG_RATIO = 0.22
 
 
 class ChangeDetector:
@@ -55,6 +64,9 @@ class ChangeDetector:
         self._ghosts: dict[tuple[int, int], int] = {}
         self._seen_ghosts: set[tuple[int, int]] = set()
         self._absorbed: list[BBox] = []
+        self._mask_edge: np.ndarray | None = None
+        if mask is not None:
+            self.set_mask(mask)
 
     @property
     def ready(self) -> bool:
@@ -73,6 +85,7 @@ class ChangeDetector:
 
     def set_mask(self, mask: np.ndarray | None) -> None:
         self.mask = mask
+        self._mask_edge = None if mask is None else cv2.subtract(mask, cv2.erode(mask, _SHIFT_KERNEL, iterations=2))
 
     def absorb(self, bbox: BBox) -> None:
         """Learn the current look of `bbox` as background (after a false alarm).
@@ -132,6 +145,59 @@ class ChangeDetector:
         ref = float(self._gradient(cv2.convertScaleAbs(self._reference[y1:y2, x1:x2]))[band].mean())
         return ref > 1.8 * cur and ref - cur > 20
 
+    def _shift_only(self, img: np.ndarray, inside: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> bool:
+        """The camera moved by a pixel: edges of the markings shift, nothing new appears.
+
+        Each pixel is compared with the range of the reference in its 3×3 neighbourhood,
+        so a shifted edge still falls inside that range while a real object does not.
+        """
+        cur = img[y1:y2, x1:x2].astype(np.float32)
+        ref = self._reference[y1:y2, x1:x2]
+        out = np.maximum(cur - cv2.dilate(ref, _SHIFT_KERNEL), cv2.erode(ref, _SHIFT_KERNEL) - cur).clip(0)
+        if out.ndim == 3:
+            out = out.max(axis=2)
+        return float(out[inside].mean()) < 0.5 * self.params.diff_threshold
+
+    def _shading_only(self, img: np.ndarray, inside: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> bool:
+        """A shadow or a light change, not an object.
+
+        Light multiplies brightness: under a shadow the region and the asphalt around it
+        darken by the same factor, in every colour channel. An object changes the region
+        differently from its surroundings (or changes one colour more than the others).
+        """
+        ring = (cv2.dilate(inside.astype(np.uint8), _RING_KERNEL) > 0) & ~inside
+        if ring.sum() < 20:
+            return False
+        ratio = (img[y1:y2, x1:x2].astype(np.float32) + 4) / (self._reference[y1:y2, x1:x2] + 4)
+        if ratio.ndim == 2:
+            ratio = ratio[:, :, None]
+        k_in = np.median(ratio[inside], axis=0)
+        k_ring = np.median(ratio[ring], axis=0)
+        return bool(np.abs(np.log(k_in) - np.log(k_ring)).max() < SHADING_LOG_RATIO)
+
+    def _arm_from_outside(self, fg: np.ndarray, mask: np.ndarray) -> list[BBox]:
+        """Something big reaching from the edge of the picture up to the runway (an arm, a vehicle).
+
+        It is looked for in the whole picture, because the part outside the runway is cut
+        away below: on the runway only the hand may be left, with no sign of the arm.
+        """
+        h, w = fg.shape[:2]
+        x, y, bw, bh = cv2.boundingRect(mask)
+        x1, y1 = x - INTRUSION_PX, y - INTRUSION_PX
+        x2, y2 = x + bw + INTRUSION_PX, y + bh + INTRUSION_PX
+        small = cv2.resize(fg, (w // 4, h // 4), interpolation=cv2.INTER_NEAREST)
+        n, _, stats, _ = cv2.connectedComponentsWithStats(small)
+        found = []
+        for cx, cy, cw, ch, area in stats[1:]:
+            # Too small to be an arm, or so big it is the light changing on the whole table.
+            if area * 16 < self.params.max_area_px // 2 or area > 0.2 * small.size:
+                continue
+            border = cx <= 0 or cy <= 0 or cx + cw >= small.shape[1] or cy + ch >= small.shape[0]
+            bx1, by1, bx2, by2 = cx * 4, cy * 4, (cx + cw) * 4, (cy + ch) * 4
+            if border and bx1 < x2 and x1 < bx2 and by1 < y2 and y1 < by2:
+                found.append(BBox(x=int(bx1), y=int(by1), w=int(bx2 - bx1), h=int(by2 - by1)))
+        return found
+
     def _confirm_ghost(self, center: tuple[int, int]) -> bool:
         """Absorb a ghost only after it was seen in the same place for a few frames."""
         for key in list(self._ghosts):
@@ -168,7 +234,9 @@ class ChangeDetector:
         if diff.ndim == 3:
             diff = diff.max(axis=2)
         _, fg = cv2.threshold(diff, p.diff_threshold, 255, cv2.THRESH_BINARY)
+        arms: list[BBox] = []
         if mask is not None:
+            arms = self._arm_from_outside(fg, mask)
             fg = cv2.bitwise_and(fg, mask)
         # Closing joins the pieces of one object. No opening: it would erase thin objects
         # (a paper clip is 1–2 px wide); speckle noise is removed by MIN_AREA_PX and persistence.
@@ -193,7 +261,24 @@ class ChangeDetector:
             if area < p.min_area_px:
                 continue
             bbox = BBox(x=x, y=y, w=w, h=h)
-            absorbed = self._in_absorbed(bbox) if area <= p.max_area_px else None
+            fh, fw = fg.shape[:2]
+            # Cut by the frame edge: can't be measured, and it's usually something entering the picture.
+            border = x <= 1 or y <= 1 or x + w >= fw - 1 or y + h >= fh - 1
+            large = area > p.max_area_px or border
+            # Touching the edge of the calibrated runway: an arm or a vehicle coming onto it.
+            edge = border or (
+                mask is not None and self._mask_edge is not None
+                and cv2.countNonZero(cv2.bitwise_and(roi, self._mask_edge[y : y + h, x : x + w])) > 0
+            )
+            if not large:
+                pad = 8
+                x1, y1, x2, y2 = max(0, x - pad), max(0, y - pad), min(fw, x + w + pad), min(fh, y + h + pad)
+                inside = np.zeros((y2 - y1, x2 - x1), np.uint8)
+                cv2.drawContours(inside, [contour], -1, 1, -1, offset=(-x1, -y1))
+                inside = inside > 0
+                if self._shift_only(img, inside, x1, y1, x2, y2) or self._shading_only(img, inside, x1, y1, x2, y2):
+                    continue
+            absorbed = self._in_absorbed(bbox) if not large else None
             # Ghost check only where something was learned into the reference on purpose:
             # elsewhere an asphalt-coloured object on the markings would look the same, and
             # a missed object is worse than a false alarm.
@@ -208,10 +293,15 @@ class ChangeDetector:
                     bbox=bbox,
                     center=(cx, cy),
                     area=area,
-                    large=area > p.max_area_px,
+                    large=large,
                     score=round(min(1.0, mean_diff / (p.diff_threshold * 3)), 3),
+                    edge=edge,
                 )
             )
+
+        big = [r.bbox for r in regions if r.large]
+        if big:
+            regions = [r for r in regions if r.large or not any(_near(r.bbox, b, INTRUSION_PX) for b in big)]
 
         # Ghost candidates not seen in this frame are forgotten.
         self._ghosts = {k: v for k, v in self._ghosts.items() if k in self._seen_ghosts}
@@ -219,9 +309,14 @@ class ChangeDetector:
         # Slow reference update, only outside changed areas and known objects,
         # so lighting drift is absorbed but an object never fades into the background.
         keep = cv2.dilate(fg, _PROTECT_KERNEL)
-        for b in protect or []:
+        # The arm is kept out of the reference too, or it would leave a trace on the table.
+        for b in [*(protect or []), *arms]:
             cv2.rectangle(keep, (b.x - 8, b.y - 8), (b.x2 + 8, b.y2 + 8), 255, -1)
         update_mask = cv2.bitwise_not(keep)
         cv2.accumulateWeighted(img, self._reference, p.learning_rate, mask=update_mask)
 
-        return ChangeResult(regions=regions, fg_fraction=fg_fraction)
+        return ChangeResult(regions=regions, fg_fraction=fg_fraction, intrusion=bool(arms))
+
+
+def _near(a: BBox, b: BBox, gap: int) -> bool:
+    return a.x < b.x2 + gap and b.x - gap < a.x2 and a.y < b.y2 + gap and b.y - gap < a.y2
