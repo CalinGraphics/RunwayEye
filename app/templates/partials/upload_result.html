@@ -4,6 +4,15 @@
   <span>{{ r.error }}</span>
 </div>
 {% else %}
+{% if r.sent is defined %}
+<div role="status" class="alert {{ 'alert-error' if r.sent else 'alert-info' }} mb-4">
+  {% if r.sent %}
+  <span><b>{{ r.sent }} {{ "incident trimis" if r.sent == 1 else "incidente trimise" }}</b>: alertă pe panou și pe telefonul echipei, salvat în istoric și în Supabase. <a href="/incidents" class="link">Istoric</a></span>
+  {% else %}
+  <span>Nicio detecție, deci nicio alertă trimisă.</span>
+  {% endif %}
+</div>
+{% endif %}
 <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
   <div class="panel overflow-hidden">
     <div class="panel-head">

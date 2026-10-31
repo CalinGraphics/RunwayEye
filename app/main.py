@@ -21,6 +21,9 @@ from app.templating import templates
 from app.vision.pipeline import VisionService, runway_geometry
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# One line per Supabase request (a pull every 10 s) would bury the useful lines.
+for noisy in ("httpx", "httpcore", "hpack"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 log = logging.getLogger("runwayeye")
 
 

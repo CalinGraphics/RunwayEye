@@ -5,7 +5,7 @@
 {% block page_title %}Test pe o poză sau un clip{% endblock %}
 {% block content %}
 <main class="space-y-4 p-4 sm:p-6">
-  <p class="text-sm text-base-content/60">Rezultatul apare doar aici: nu se creează incidente și nu se trimit alerte.</p>
+  <p class="text-sm text-base-content/60">Implicit rezultatul apare doar aici. Bifați „Trimite ca incident real” ca detecțiile să pornească alerta pe panou și pe telefonul echipei și să ajungă în istoric și în Supabase.</p>
 
   <form class="panel grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_260px]" hx-post="/upload" hx-encoding="multipart/form-data"
         hx-target="#upload-result" hx-indicator="#upload-busy" hx-disabled-elt="find button" x-data="{ name: '' }">
@@ -19,6 +19,10 @@
       <label class="flex cursor-pointer items-start gap-2 text-sm">
         <input type="checkbox" name="use_calibration" value="true" class="checkbox checkbox-sm checkbox-primary mt-0.5">
         <span>Folosește calibrarea camerei <span class="text-base-content/50">(doar dacă e filmat din același loc)</span></span>
+      </label>
+      <label class="flex cursor-pointer items-start gap-2 text-sm">
+        <input type="checkbox" name="send_alert" value="true" class="checkbox checkbox-sm checkbox-error mt-0.5">
+        <span>Trimite ca incident real <span class="text-base-content/50">(alertă pe panou și pe telefon, salvat în istoric și în Supabase)</span></span>
       </label>
     </div>
     <div class="flex flex-col justify-between gap-4">

@@ -193,3 +193,24 @@ def test_ai_description_is_saved_on_the_incident(client):
     assert client.get(f"/incidents/{inc.id}").text.count("poate fi aspirat de motor") == 1
     events = client.app.state.incidents.events(inc.id)
     assert events[-1]["label"] == "Descriere AI"
+
+
+def test_upload_photo_as_real_incident(client):
+    import cv2
+    import numpy as np
+
+    from app.vision.types import BBox
+    from tests.synthetic import FakeYolo
+
+    client.app.state.vision.yolo = FakeYolo([(BBox(x=100, y=80, w=40, h=30), "bolt", "bolț", 0.9)])
+    photo = cv2.imencode(".jpg", np.full((300, 300, 3), 90, np.uint8))[1].tobytes()
+
+    test_only = client.post("/upload", files={"file": ("bolt.jpg", photo, "image/jpeg")})
+    assert test_only.status_code == 200 and "bolț" in test_only.text
+    assert client.get("/api/incidents").json() == []
+
+    sent = client.post("/upload", files={"file": ("bolt.jpg", photo, "image/jpeg")}, data={"send_alert": "true"})
+    assert "1 incident trimis" in sent.text
+    [inc] = client.get("/api/incidents").json()
+    assert inc["class_key"] == "bolt" and inc["risk"] == "critic"
+    assert client.get(inc["crop_url"]).status_code == 200

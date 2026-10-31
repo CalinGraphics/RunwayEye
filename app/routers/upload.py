@@ -1,4 +1,7 @@
-"""Test upload: run detection on a photo (YOLO) or a clip (both layers), without creating incidents."""
+"""Test upload: run detection on a photo (YOLO) or a clip (both layers).
+
+By default nothing is created. With "send as a real incident" every detection goes through the same
+path as the live camera: Command Center, team phones, history and Supabase."""
 
 import base64
 import shutil
@@ -12,10 +15,11 @@ from fastapi.responses import HTMLResponse
 
 from app.services.risk import assess_risk
 from app.templating import templates
-from app.vision.annotate import annotate, encode_jpeg
+from app.vision.annotate import annotate, crop_jpeg, encode_jpeg
 from app.vision.capture import resize_to_width
 from app.vision.engine import DetectionEngine, EngineParams, NewIncident
 from app.vision.fusion import Track
+from app.vision.types import Detection
 
 router = APIRouter()
 
@@ -48,7 +52,7 @@ def _analyse_image(request: Request, data: bytes) -> dict:
             "Detecția schimbărilor are nevoie de un clip, ca să învețe pista curată."
         }
     cands = vision.yolo.detect(frame)
-    tracks, risks, rows = [], {}, []
+    tracks, risks, rows, detections = [], {}, [], []
     for i, c in enumerate(cands):
         t = Track(id=i + 1, cand=c, anchor=c.center, anchor_area=c.area, confirmed=True, best_yolo=c)
         risk = assess_risk(c.class_key, None, s.unknown_critical_cm)
@@ -56,8 +60,13 @@ def _analyse_image(request: Request, data: bytes) -> dict:
         risks[t.id] = risk
         rows.append({"object_class": c.label, "confidence": c.confidence, "risk": risk, "source": "yolo",
                      "sector": None, "time_s": None})
-    image = annotate(frame, tracks, risks, None, None, "Upload")
-    return {"kind": "poză", "image": _data_uri(encode_jpeg(image, 85)), "rows": rows, "frames": 1}
+        crop = crop_jpeg(frame, c.bbox)
+        detections.append(Detection(source="yolo", object_class=c.label, class_key=c.class_key,
+                                    confidence=c.confidence, bbox=c.bbox, center_px=c.center, risk=risk,
+                                    crop_jpeg_b64=base64.b64encode(crop).decode("ascii") if crop else None))
+    image = encode_jpeg(annotate(frame, tracks, risks, None, None, "Upload"), 85)
+    return {"kind": "poză", "image": _data_uri(image), "rows": rows, "frames": 1,
+            "detections": [(d, image) for d in detections]}
 
 
 def _analyse_clip(request: Request, path: Path, use_calibration: bool) -> dict:
@@ -69,7 +78,7 @@ def _analyse_clip(request: Request, path: Path, use_calibration: bool) -> dict:
     fps = cap.get(cv2.CAP_PROP_FPS) or 25
     cal = vision.calibration if use_calibration else None
     engine = DetectionEngine(params=EngineParams.from_settings(s), yolo=vision.yolo, calibration=cal)
-    rows, best = [], None
+    rows, best, detections = [], None, []
     n = 0
     while n < fps * MAX_CLIP_SECONDS:
         ok, frame = cap.read()
@@ -85,6 +94,7 @@ def _analyse_clip(request: Request, path: Path, use_calibration: bool) -> dict:
                              "source": d.source, "sector": d.sector, "time_s": round(n / fps, 1),
                              "crop": f"data:image/jpeg;base64,{d.crop_jpeg_b64}" if d.crop_jpeg_b64 else None})
                 best = annotate(frame, result.tracks, result.risks, cal, None, f"Upload · {n / fps:.1f} s")
+                detections.append((d, encode_jpeg(best, 85)))
         last = (frame, result)
     cap.release()
     if n == 0:
@@ -93,11 +103,12 @@ def _analyse_clip(request: Request, path: Path, use_calibration: bool) -> dict:
         frame, result = last
         best = annotate(frame, result.tracks, result.risks, cal, None, "Upload · ultimul cadru")
     return {"kind": "clip", "image": _data_uri(encode_jpeg(best, 85)), "rows": rows, "frames": n,
-            "seconds": round(n / fps, 1), "truncated": n >= fps * MAX_CLIP_SECONDS}
+            "seconds": round(n / fps, 1), "truncated": n >= fps * MAX_CLIP_SECONDS, "detections": detections}
 
 
 @router.post("/upload", response_class=HTMLResponse)
-def upload(request: Request, file: UploadFile = File(...), use_calibration: bool = Form(False)):
+def upload(request: Request, file: UploadFile = File(...), use_calibration: bool = Form(False),
+           send_alert: bool = Form(False)):
     ext = Path(file.filename or "").suffix.lower()
     if file.size is not None and file.size > MAX_UPLOAD_MB * 1024 * 1024:
         result = {"error": f"Fișierul e prea mare (maximum {MAX_UPLOAD_MB} MB). Tăiați clipul la câteva zeci de secunde."}
@@ -114,4 +125,9 @@ def upload(request: Request, file: UploadFile = File(...), use_calibration: bool
     else:
         result = {"error": "Format nesuportat. Încarcă o poză (JPG, PNG, WEBP) sau un clip (MP4, AVI, MOV, MKV)."}
     result["filename"] = file.filename
+    detections = result.pop("detections", [])
+    if send_alert:
+        for det, snapshot in detections:
+            request.app.state.incidents.create_from_detection(det, snapshot)
+        result["sent"] = len(detections)
     return templates.TemplateResponse(request, "partials/upload_result.html", {"r": result})
