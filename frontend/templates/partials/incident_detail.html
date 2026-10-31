@@ -27,7 +27,7 @@
       {% endif %}
       <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div><dt class="eyebrow">Sector</dt><dd class="mt-1 text-xl">{% if inc.sector %}<span class="sign-location">{{ inc.sector }}</span>{% else %}<span class="font-semibold text-base-content/50">—</span>{% endif %}</dd></div>
-        <div><dt class="eyebrow">De la prag 09</dt><dd class="readout text-xl font-semibold">{{ (inc.runway_distance_m | round | int ~ " m") if inc.runway_distance_m is not none else "—" }}</dd></div>
+        <div><dt class="eyebrow">De la capătul {{ runway_ends[0] }}</dt><dd class="readout text-xl font-semibold">{{ (inc.runway_distance_m | round | int ~ " m") if inc.runway_distance_m is not none else "—" }}</dd></div>
         <div><dt class="eyebrow">Față de ax</dt><dd class="readout text-xl font-semibold">{{ ("%+.0f m" | format(inc.centerline_offset_m)) if inc.centerline_offset_m is not none else "—" }}</dd></div>
         <div><dt class="eyebrow">Mărime</dt><dd class="readout text-xl font-semibold">{{ ("~" ~ (inc.size_estimate_cm | round(1)) ~ " cm") if inc.size_estimate_cm is not none else "—" }}</dd></div>
       </dl>

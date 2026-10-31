@@ -4,9 +4,19 @@
 {% block head %}
 <script>
   document.addEventListener("alpine:init", () => {
+    // Area of a polygon (shoelace), for picking the corners among the clicked points.
+    const area = (q) => Math.abs(q.reduce((s, p, i) => {
+      const n = q[(i + 1) % q.length];
+      return s + p[0] * n[1] - n[0] * p[1];
+    }, 0)) / 2;
+
     Alpine.data("calibrator", (cfg) => ({
       names: cfg.names,
-      points: cfg.corners.map((p) => [p[0], p[1]]),
+      max: 12,
+      points: (cfg.outline.length ? cfg.outline : cfg.corners).map((p) => [p[0], p[1]]),
+      corners: [], // indices into points, in click order
+      manual: false, // the operator picked the corners by hand: adding points keeps them
+      offscreen: false, // the saved corners lie outside the picture (a clip with its own runway)
       saved: cfg.corners.length === 4,
       w: cfg.size[0],
       h: cfg.size[1],
@@ -14,51 +24,113 @@
       message: "",
       error: false,
 
+      init() {
+        const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 1.5;
+        const found = cfg.corners.map((c) => this.points.findIndex((p) => near(p, c)));
+        if (found.length === 4 && found.every((i) => i >= 0)) {
+          this.corners = [...found].sort((a, b) => a - b);
+          this.manual = true;
+        } else {
+          this.offscreen = cfg.corners.length === 4;
+          this.autoCorners();
+        }
+      },
       loaded(e) {
         this.w = e.target.naturalWidth;
         this.h = e.target.naturalHeight;
       },
+      // The first point is always a corner (it fixes the direction); of the others, the three
+      // that make the largest shape with it. Extra points along an edge add no area, so they lose.
+      autoCorners() {
+        const n = this.points.length;
+        if (n < 4) {
+          this.corners = [...Array(n).keys()];
+          return;
+        }
+        let best = null;
+        let bestArea = -1;
+        for (let i = 1; i < n; i++)
+          for (let j = i + 1; j < n; j++)
+            for (let k = j + 1; k < n; k++) {
+              const a = area([this.points[0], this.points[i], this.points[j], this.points[k]]);
+              if (a > bestArea) [best, bestArea] = [[0, i, j, k], a];
+            }
+        this.corners = best;
+      },
       add(e) {
-        if (this.points.length >= 4) return;
+        if (this.points.length >= this.max) {
+          this.say(`Cel mult ${this.max} puncte.`, true);
+          return;
+        }
         const r = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - r.left) * this.w) / r.width;
         const y = ((e.clientY - r.top) * this.h) / r.height;
         this.points.push([Math.round(x), Math.round(y)]);
-        this.saved = false;
+        if (!this.manual) this.autoCorners();
+        this.changed();
+      },
+      toggle(i) {
+        if (i === 0) return;
+        if (this.corners.includes(i)) {
+          this.corners = this.corners.filter((c) => c !== i);
+        } else if (this.corners.length < 4) {
+          this.corners = [...this.corners, i].sort((a, b) => a - b);
+        } else {
+          this.say("Sunt deja 4 colțuri. Scoate întâi unul.", true);
+          return;
+        }
+        this.manual = true;
+        this.changed();
       },
       undo() {
+        const last = this.points.length - 1;
         this.points.pop();
-        this.saved = false;
+        if (this.manual) this.corners = this.corners.filter((c) => c !== last);
+        else this.autoCorners();
+        this.changed();
       },
       clear() {
         this.points = [];
+        this.corners = [];
+        this.manual = false;
+        this.changed();
+      },
+      changed() {
         this.saved = false;
         this.message = "";
+      },
+      say(text, error = false) {
+        this.message = text;
+        this.error = error;
+      },
+      cornerNo(i) {
+        return this.corners.indexOf(i) + 1; // 0 = a point on the edge
+      },
+      get ready() {
+        return this.points.length >= 4 && this.corners.length === 4;
       },
       get polygon() {
         return this.points.map((p) => p.join(",")).join(" ");
       },
       async save() {
         try {
-          const r = await RE.post("/calibrate", { corners: this.points });
+          const r = await RE.post("/calibrate", {
+            corners: this.corners.map((i) => this.points[i]),
+            outline: this.points,
+          });
           this.saved = true;
-          this.error = false;
-          this.message = r.message + ": sectoarele și metrii apar acum în alerte.";
+          this.say(r.message + ". Sectoarele și distanțele apar acum în alerte.");
         } catch (e) {
-          this.error = true;
-          this.message = e.message;
+          this.say(e.message, true);
         }
       },
       async remove() {
         try {
           const r = await RE.post("/calibrate/reset");
-          this.points = [];
-          this.saved = false;
-          this.error = false;
-          this.message = r.message;
+          this.clear();
+          this.say(r.message);
         } catch (e) {
-          this.error = true;
-          this.message = e.message;
+          this.say(e.message, true);
         }
       },
     }));
@@ -68,24 +140,27 @@
 {% set active = "calibrate" %}
 {% block page_title %}Calibrarea pistei{% endblock %}
 {% block content %}
-{% set cfg = {"names": corner_names, "corners": corners, "size": frame_size} %}
-<main class="grid gap-4 px-4 py-4 sm:px-8 sm:py-6 xl:grid-cols-[minmax(0,1fr)_340px]" x-data='calibrator({{ cfg | tojson }})'>
+{% set cfg = {"names": corner_names, "corners": corners, "outline": outline, "size": frame_size} %}
+{% set a, b = runway_ends %}
+<main class="grid gap-4 px-4 py-4 sm:px-8 sm:py-6 xl:grid-cols-[minmax(0,1fr)_360px]" x-data='calibrator({{ cfg | tojson }})'>
   <section class="panel overflow-hidden">
     <div class="panel-head">
-      <h2>Atinge cele 4 colțuri, în ordine</h2>
+      <h2>Atinge marginile pistei pe imagine</h2>
       <button class="btn btn-ghost btn-sm" @click="stamp = Date.now()">{{ icon("refresh") }} Cadru nou</button>
     </div>
     <div class="bg-[#0d1626] p-2 sm:p-3">
       <div class="relative cursor-crosshair touch-manipulation select-none" @click="add($event)">
-        <img :src="'/snapshot?raw=1&t=' + stamp" @load="loaded($event)" alt="Cadru curent de la cameră" class="block w-full rounded-field" draggable="false">
+        <img src="/snapshot?raw=1" :src="'/snapshot?raw=1&t=' + stamp" @load="loaded($event)" alt="Cadru curent de la cameră" class="block w-full rounded-field" draggable="false">
         {# .camel: HTML lowercases attribute names, and SVG only understands "viewBox". #}
         <svg class="pointer-events-none absolute inset-0 size-full" :view-box.camel="`0 0 ${w} ${h}`" preserveAspectRatio="none">
           <polygon x-show="points.length > 1" :points="polygon" fill="rgba(23,105,255,0.16)" stroke="#1769ff" stroke-width="2" vector-effect="non-scaling-stroke"/>
         </svg>
-        {# Corner markers as HTML: Alpine's x-for can't clone <template> inside SVG. #}
+        {# Markers as HTML: Alpine's x-for can't clone <template> inside SVG. Corners are numbered 1-4
+           like the diagram; the other points are small dots on the outline. #}
         <template x-for="(p, i) in points" :key="i">
-          <span class="pointer-events-none absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-primary font-mono text-xs font-bold text-primary-content shadow-lg"
-                :style="`left:${p[0] / w * 100}%;top:${p[1] / h * 100}%`" x-text="i + 1"></span>
+          <span class="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 font-mono text-xs font-bold shadow-lg"
+                :class="cornerNo(i) ? 'size-7 border-white bg-primary text-primary-content' : 'size-3.5 border-primary bg-white'"
+                :style="`left:${p[0] / w * 100}%;top:${p[1] / h * 100}%`" x-text="cornerNo(i) || ''"></span>
         </template>
       </div>
     </div>
@@ -93,9 +168,13 @@
 
   <aside class="space-y-4">
     <div class="panel">
-      <div class="panel-head"><h2>Colțurile pistei</h2><span class="readout text-sm font-bold text-base-content" x-text="points.length + '/4'"></span></div>
-      {# Seen from above. Looking from threshold 09 towards 27, "left" is the top edge, so the order runs
-         top-left, bottom-left, bottom-right, top-right (CORNER_NAMES in calibration.py). #}
+      <div class="panel-head">
+        <h2>Conturul pistei</h2>
+        <span class="text-xs font-semibold text-base-content/70"
+              x-text="points.length + (points.length === 1 ? ' punct' : ' puncte') + ' · ' + corners.length + '/4 colțuri'"></span>
+      </div>
+      {# Seen from above. Looking from the first end towards the second, "left" is the top edge, so the
+         corners run top-left, bottom-left, bottom-right, top-right (corner_names in calibration.py). #}
       <div class="px-4 sm:px-5">
         <svg viewBox="0 0 300 120" class="w-full" role="img" aria-label="Schema pistei cu ordinea colțurilor">
           <rect x="30" y="22" width="240" height="64" rx="3" fill="#26334a"/>
@@ -104,35 +183,49 @@
           <rect x="255" y="{{ 30 + k * 10 }}" width="10" height="5" fill="#fff" opacity="0.9"/>
           {% endfor %}
           <line x1="58" y1="54" x2="242" y2="54" stroke="#fff" stroke-width="1.5" stroke-dasharray="9 7" opacity="0.6"/>
-          <text x="14" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">09</text>
-          <text x="286" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">27</text>
+          <text x="14" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">{{ a }}</text>
+          <text x="286" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">{{ b }}</text>
           <path d="M60 104h170" stroke="#6b7385" stroke-width="1.5"/>
           <path d="M230 100l7 4-7 4z" fill="#6b7385"/>
-          <text x="150" y="117" font-size="9" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#4b5363" text-anchor="middle">privești de la 09 spre 27</text>
+          <text x="150" y="117" font-size="9" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#4b5363" text-anchor="middle">privești de la capătul {{ a }} spre {{ b }}</text>
           {% for cx, cy in [(30, 22), (30, 86), (270, 86), (270, 22)] %}
-          <g :class="{{ loop.index0 }} === points.length && 'corner-next'">
+          <g :class="{{ loop.index0 }} === corners.length && 'corner-next'">
             <circle cx="{{ cx }}" cy="{{ cy }}" r="10" stroke-width="2"
-                    :class="{{ loop.index0 }} < points.length ? 'fill-primary stroke-white' : {{ loop.index0 }} === points.length ? 'fill-white stroke-primary' : 'fill-white stroke-[#c9c1b0]'"/>
+                    :class="{{ loop.index0 }} < corners.length ? 'fill-primary stroke-white' : {{ loop.index0 }} === corners.length ? 'fill-white stroke-primary' : 'fill-white stroke-[#c9c1b0]'"/>
             <text x="{{ cx }}" y="{{ cy + 4 }}" font-size="11" font-weight="700" font-family="B612 Mono, Consolas, monospace" text-anchor="middle"
-                  :class="{{ loop.index0 }} < points.length ? 'fill-white' : 'fill-base-content'">{{ loop.index }}</text>
+                  :class="{{ loop.index0 }} < corners.length ? 'fill-white' : 'fill-base-content'">{{ loop.index }}</text>
           </g>
           {% endfor %}
         </svg>
+        <p class="mt-1 text-xs text-base-content/70">{{ a }} și {{ b }} sunt cele două capete ale pistei, numite după direcția de zbor: {{ a }}0° și {{ b }}0° pe busolă.</p>
       </div>
-      <ol class="space-y-1 px-3 pt-2 pb-3 text-sm">
-        <template x-for="(name, i) in names" :key="i">
-          <li class="flex items-center gap-2.5 rounded-[14px] px-2.5 py-2"
-              :class="i === points.length ? 'bg-primary/10 font-semibold text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/65'">
-            <span class="readout flex size-6 items-center justify-center rounded-full border text-xs"
-                  :class="i < points.length ? 'border-primary bg-primary text-primary-content' : 'border-current'" x-text="i + 1"></span>
-            <span class="first-letter:uppercase" x-text="name"></span>
+
+      <ol class="space-y-2 px-4 pt-3 text-sm text-base-content/80 sm:px-5">
+        <li class="flex gap-2"><span class="readout grid size-5 shrink-0 place-items-center rounded-full bg-base-200 text-[0.65rem] font-bold">1</span>Începe din colțul 1 și mergi pe margine, în ordinea din schemă.</li>
+        <li class="flex gap-2"><span class="readout grid size-5 shrink-0 place-items-center rounded-full bg-base-200 text-[0.65rem] font-bold">2</span>Pune câte puncte vrei, minim 4: în plus unde marginea se curbează sau iese din imagine.</li>
+      </ol>
+
+      <p x-show="offscreen" x-cloak class="mx-4 mt-3 rounded-[14px] bg-warning/10 px-3 py-2 text-xs text-warning sm:mx-5">
+        Colțurile pistei sunt în afara imaginii, așa că aici se vede doar conturul. Dacă salvezi, colțurile devin punctele de pe imagine.
+      </p>
+
+      <ul class="mt-2 max-h-72 space-y-1 overflow-y-auto px-3 pb-3 text-sm" x-show="points.length">
+        <template x-for="(p, i) in points" :key="i">
+          <li class="flex items-center gap-2.5 rounded-[14px] px-2.5 py-1.5" :class="cornerNo(i) && 'bg-primary/8'">
+            <span class="readout flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                  :class="cornerNo(i) ? 'bg-primary text-primary-content' : 'border border-line text-base-content/60'" x-text="cornerNo(i) || '·'"></span>
+            <span class="min-w-0 flex-1 truncate first-letter:uppercase" :class="!cornerNo(i) && 'text-base-content/70'"
+                  x-text="cornerNo(i) ? names[cornerNo(i) - 1] : 'punct pe margine'"></span>
+            <button type="button" class="btn btn-xs" x-show="i > 0" @click="toggle(i)"
+                    :class="cornerNo(i) ? 'btn-pill' : 'btn-ghost text-primary'" x-text="cornerNo(i) ? 'Nu e colț' : 'E colț'"></button>
           </li>
         </template>
-      </ol>
+      </ul>
+
       <div class="flex gap-2 border-t border-line p-3">
         <button class="btn btn-sm btn-ghost" @click="undo()" :disabled="!points.length">Înapoi</button>
         <button class="btn btn-sm btn-ghost" @click="clear()" :disabled="!points.length">Reia</button>
-        <button class="btn btn-sm btn-primary ml-auto" @click="save()" :disabled="points.length !== 4">Salvează</button>
+        <button class="btn btn-sm btn-primary ml-auto" @click="save()" :disabled="!ready">Salvează</button>
       </div>
       <p x-show="message" x-cloak class="px-4 pb-3 text-sm font-medium" :class="error ? 'text-error' : 'text-success'" x-text="message" role="status"></p>
     </div>

@@ -10,9 +10,10 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 
+from app.routers.source import library_clip, library_clips
 from app.services.risk import assess_risk
 from app.templating import templates
 from app.vision.annotate import annotate, crop_jpeg, encode_jpeg
@@ -35,7 +36,7 @@ def _data_uri(jpeg: bytes) -> str:
 
 @router.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request):
-    return templates.TemplateResponse(request, "upload.html", {})
+    return templates.TemplateResponse(request, "upload.html", {"clips": [p.name for p in library_clips(request)]})
 
 
 def _analyse_image(request: Request, data: bytes) -> dict:
@@ -107,8 +108,17 @@ def _analyse_clip(request: Request, path: Path, use_calibration: bool) -> dict:
 
 
 @router.post("/upload", response_class=HTMLResponse)
-def upload(request: Request, file: UploadFile = File(...), use_calibration: bool = Form(False),
-           send_alert: bool = Form(False)):
+def upload(request: Request, file: UploadFile | None = File(None), clip: str = Form(""),
+           use_calibration: bool = Form(False), send_alert: bool = Form(False)):
+    """A photo or clip from this computer, or a clip already in the library (data/videos/)."""
+    if clip:
+        try:
+            result = _analyse_clip(request, library_clip(request, clip), use_calibration)
+        except HTTPException as exc:
+            result = {"error": exc.detail}
+        return _respond(request, result, clip, send_alert)
+    if file is None or not file.filename:
+        return _respond(request, {"error": "Alege un fișier sau un clip din bibliotecă."}, "", False)
     ext = Path(file.filename or "").suffix.lower()
     if file.size is not None and file.size > MAX_UPLOAD_MB * 1024 * 1024:
         result = {"error": f"Fișierul e prea mare (maximum {MAX_UPLOAD_MB} MB). Tăiați clipul la câteva zeci de secunde."}
@@ -124,7 +134,11 @@ def upload(request: Request, file: UploadFile = File(...), use_calibration: bool
             tmp_path.unlink(missing_ok=True)
     else:
         result = {"error": "Format nesuportat. Încarcă o poză (JPG, PNG, WEBP) sau un clip (MP4, AVI, MOV, MKV)."}
-    result["filename"] = file.filename
+    return _respond(request, result, file.filename, send_alert)
+
+
+def _respond(request: Request, result: dict, filename: str, send_alert: bool) -> HTMLResponse:
+    result["filename"] = filename
     detections = result.pop("detections", [])
     if send_alert:
         for det, snapshot in detections:

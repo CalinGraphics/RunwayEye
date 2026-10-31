@@ -115,7 +115,7 @@ const RE = {
     if (inc.runway_distance_m == null) return "poziție necalibrată";
     const off = inc.centerline_offset_m;
     const side = Math.abs(off) < 0.5 ? "pe ax" : `${Math.abs(off).toFixed(0)} m ${off < 0 ? "stânga" : "dreapta"} axului`;
-    return `${Math.round(inc.runway_distance_m)} m de pragul 09 · ${side}`;
+    return `${Math.round(inc.runway_distance_m)} m de capătul ${window.RUNWAY_END || "09"} · ${side}`;
   },
 
   alertText(inc) {

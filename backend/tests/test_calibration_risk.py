@@ -83,6 +83,22 @@ def test_mockup_size_estimate():
     assert rect.size_cm(BBox(x=100, y=100, w=50, h=30)) == pytest.approx(5.0, abs=0.01)
 
 
+def test_upright_object_is_measured_by_its_height():
+    # Real runway seen at an angle: the far edge (y=0) is squeezed into fewer pixels than the near one.
+    geom = RunwayGeometry(100, 40)
+    cal = Calibration([(300, 100), (0, 500), (1000, 500), (700, 100)], (1000, 600), geom)
+    from app.vision.types import BBox
+
+    # Projected flat, the box's top lands somewhere on the asphalt and the size depends on the
+    # camera angle; measured upright, height = box height at the scale of the feet.
+    box = BBox(x=490, y=380, w=20, h=100)
+    upright = cal.size_cm(box, upright=True)
+    (u1, v1), (u2, v2) = cal.to_runway(490, 480), cal.to_runway(510, 480)
+    base_cm = ((u2 - u1) ** 2 + (v2 - v1) ** 2) ** 0.5 * 100
+    assert upright == pytest.approx(base_cm * 5, rel=0.01)
+    assert upright != pytest.approx(cal.size_cm(box), rel=0.05)
+
+
 @pytest.mark.parametrize(
     "key,size,risk",
     [
@@ -160,3 +176,25 @@ def test_severity_examples():
     assert severity("persoana")["nivel"] == 5
     assert severity("unknown", 30, 15)["nivel"] == 4 and severity("unknown", 3, 15)["nivel"] == 2
     assert severity("no_such_class") is None
+
+
+def test_clip_scene_brings_its_own_runway(tmp_path):
+    import json
+
+    from app.vision.scene import Scene
+
+    clip = tmp_path / "real.mp4"
+    clip.write_bytes(b"")
+    (tmp_path / "real.scene.json").write_text(json.dumps({
+        "runway": {"length_m": 400, "width_m": 45, "sectors_along": 4, "sectors_across": 3},
+        "corners": [[100, 50], [0, 200], [400, 200], [300, 50]],
+        "frame_size": [400, 200],
+        "tuning": {"min_area_px": 10},
+    }))
+    scene = Scene.for_source("file", str(clip))
+    assert scene.tuning == {"min_area_px": 10}
+    assert scene.geometry.length_m == 400 and scene.geometry.mockup_length_cm == 0
+    cal = scene.calibration((800, 400))  # frame twice as large: corners rescale
+    assert cal.corners[2] == (800.0, 400.0)
+    assert Scene.for_source("camera", 0) is None
+    assert Scene.for_source("file", str(tmp_path / "other.mp4")) is None

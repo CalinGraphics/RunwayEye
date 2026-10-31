@@ -14,6 +14,7 @@
       error: false,
       busy: false,
       stamp: Date.now(),
+      confirmDel: null, // clip waiting for "Da, șterge"
 
       async init() {
         await this.refresh();
@@ -89,6 +90,21 @@
           e.target.value = "";
         }
       },
+      async removeClip(c) {
+        this.busy = true;
+        try {
+          const res = await fetch(`/api/source/clip/${encodeURIComponent(c.name)}`, { method: "DELETE" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Ștergerea nu a reușit");
+          this.say(data.message);
+          await this.refresh();
+        } catch (e) {
+          this.say(e.message, true);
+        } finally {
+          this.busy = false;
+          this.confirmDel = null;
+        }
+      },
       isCurrent(source) {
         return this.current && this.current.source === source;
       },
@@ -126,14 +142,23 @@
 
     <div class="space-y-2 p-4 sm:p-5" x-show="tab === 'clip'" role="tabpanel">
       <template x-for="c in clips" :key="c.source">
-        <div class="flex items-center gap-3 rounded-[16px] border border-line px-3 py-2.5">
-          <span class="icon-tile size-9">{{ icon("camera") }}</span>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-semibold" x-text="c.name"></p>
-            <p class="text-xs text-base-content/70" x-text="c.mb + ' MB'"></p>
+        <div class="rounded-[16px] border border-line px-3 py-2.5" :class="confirmDel === c.name && 'border-error/40 bg-error/5'">
+          <div class="flex items-center gap-3">
+            <span class="icon-tile size-9">{{ icon("camera") }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold" x-text="c.name" :title="c.name"></p>
+              <p class="text-xs text-base-content/70" x-text="c.mb + ' MB' + (c.scene ? ' · pistă proprie' : '')"></p>
+            </div>
+            <span x-show="c.in_use" class="risk-tag" style="--tone: var(--color-success)">în uz</span>
+            <button x-show="!c.in_use" class="btn btn-sm btn-primary" @click="use(c.source)">Folosește</button>
+            <button x-show="!c.locked" class="btn btn-sm btn-ghost btn-circle text-base-content/60 hover:text-error"
+                    @click="confirmDel = confirmDel === c.name ? null : c.name" :aria-label="'Șterge ' + c.name">{{ icon("trash") }}</button>
           </div>
-          <span x-show="c.in_use" class="risk-tag" style="--tone: var(--color-success)">în uz</span>
-          <button x-show="!c.in_use" class="btn btn-sm btn-primary" @click="use(c.source)">Folosește</button>
+          <div x-show="confirmDel === c.name" x-cloak class="mt-2 flex items-center gap-2 text-sm">
+            <span class="flex-1 text-error">Ștergi definitiv clipul?</span>
+            <button class="btn btn-xs btn-ghost" @click="confirmDel = null">Anulează</button>
+            <button class="btn btn-xs btn-error" @click="removeClip(c)">Da, șterge</button>
+          </div>
         </div>
       </template>
       <p x-show="!clips.length" class="py-2 text-sm text-base-content/70">Niciun clip încă.</p>

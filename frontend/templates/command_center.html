@@ -109,7 +109,7 @@
 
         <div class="panel relative shrink-0">
           <div class="panel-head">
-            <h2>Unde e obiectul pe pistă</h2>
+            <h2 title="{{ runway_ends[0] }} și {{ runway_ends[1] }} sunt cele două capete ale pistei, numite după direcția de zbor ({{ runway_ends[0] }}0° și {{ runway_ends[1] }}0° pe busolă)">Unde e obiectul pe pistă</h2>
             <span x-show="status && status.calibrated" x-cloak class="hidden shrink-0 items-center gap-3 text-xs text-base-content/70 sm:flex">
               <span class="flex items-center gap-1.5"><span class="status-dot bg-error"></span>critic</span>
               <span class="flex items-center gap-1.5"><span class="status-dot bg-[#f08a24]"></span>mediu</span>
@@ -149,9 +149,9 @@
                   <rect x="916" y="{{ 50 + k * 13 }}" width="18" height="6" rx="1" fill="#ffffff" opacity="0.92"/>
                 {% endfor %}
                 <text x="24" y="101" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
-                      text-anchor="middle" dominant-baseline="middle">09</text>
+                      text-anchor="middle" dominant-baseline="middle">{{ runway_ends[0] }}</text>
                 <text x="976" y="101" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
-                      text-anchor="middle" dominant-baseline="middle">27</text>
+                      text-anchor="middle" dominant-baseline="middle">{{ runway_ends[1] }}</text>
                 <line x1="100" y1="100" x2="900" y2="100" stroke="#ffffff" stroke-width="2" stroke-dasharray="16 12" opacity="0.6"/>
                 {% for f in [0, 0.25, 0.5, 0.75, 1] %}
                   {% set tx = 60 + 880 * f %}
@@ -162,9 +162,9 @@
                 <line x1="60" y1="175" x2="940" y2="175" stroke="#d9d0bd"/>
                 {# Drawn arrows, not text glyphs: they keep the same weight in every font. #}
                 <path d="M66 14 60 18 66 22z" fill="#1769ff"/>
-                <text x="71" y="22" font-size="10" font-weight="700" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff" letter-spacing="1.5">PRAG 09</text>
+                <text x="71" y="22" font-size="10" font-weight="700" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff" letter-spacing="1.5">CAPĂTUL {{ runway_ends[0] }}</text>
                 <path d="M934 14 940 18 934 22z" fill="#1769ff"/>
-                <text x="929" y="22" font-size="10" font-weight="700" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff" letter-spacing="1.5" text-anchor="end">PRAG 27</text>
+                <text x="929" y="22" font-size="10" font-weight="700" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff" letter-spacing="1.5" text-anchor="end">CAPĂTUL {{ runway_ends[1] }}</text>
               </svg>
               <template x-for="inc in positioned" :key="inc.id">
                 <button type="button" class="map-marker" :data-tone="riskTone(inc.risk)" :data-hl="hl === inc.id"
@@ -358,7 +358,7 @@
       <div class="panel-head"><h2 id="tuning-title">Reglaj detecție</h2><button class="btn btn-ghost btn-sm btn-square" @click="showTuning = false" aria-label="Închide">{{ icon("x") }}</button></div>
       <div class="space-y-5 p-4 text-sm">
         <label class="block">
-          <span class="flex justify-between"><span>Prag diferență</span><span class="readout text-primary" x-text="tuning.diff_threshold"></span></span>
+          <span class="flex justify-between"><span>Contrast minim</span><span class="readout text-primary" x-text="tuning.diff_threshold"></span></span>
           <input type="range" min="5" max="90" step="1" class="range range-xs range-primary mt-2" x-model.number="tuning.diff_threshold" @change="saveTuning()">
           <span class="mt-1 block text-xs text-base-content/70">Mai mic = prinde obiecte mai șterse, dar și umbre.</span>
         </label>

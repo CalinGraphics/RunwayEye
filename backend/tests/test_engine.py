@@ -132,6 +132,37 @@ def test_closed_false_alarm_does_not_retrigger():
     assert incidents(run(engine, [scene.frame([BOLT]) for _ in range(40)])) == []
 
 
+def test_closed_object_on_a_looping_clip_does_not_come_back():
+    scene, engine = Scene(), make_engine()
+    engine.replay = True
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    engine.close_incident(inc.detection.id, absorb=False)
+    # Still in view (nobody can pick it up from a clip), then gone, then back on the next pass.
+    frames = [scene.frame([BOLT]) for _ in range(30)]
+    frames += [scene.frame() for _ in range(engine.params.gone_frames + 5)]
+    frames += [scene.frame([BOLT]) for _ in range(30)]
+    assert incidents(run(engine, frames)) == []
+
+
+def test_closed_object_on_a_live_camera_is_reported_again():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    engine.close_incident(inc.detection.id, absorb=False)
+    assert len(incidents(run(engine, [scene.frame([BOLT]) for _ in range(30)]))) == 1
+
+
+def test_new_source_forgets_closed_objects():
+    scene, engine = Scene(), make_engine()
+    engine.replay = True
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    engine.close_incident(inc.detection.id, absorb=False)
+    engine.forget_closed()
+    assert len(incidents(run(engine, [scene.frame([BOLT]) for _ in range(30)]))) == 1
+
+
 def test_object_removed_after_learning_is_one_false_alarm():
     # Known limitation (documented): a bolt present while the reference is learned and then
     # picked up gives one "obiect necunoscut"; after "Alarmă falsă" it stays quiet.

@@ -63,7 +63,7 @@ def _box(frame, b: BBox, color, thickness: int) -> None:
 def draw_runway(frame: np.ndarray, calibration: Calibration | None) -> None:
     if calibration is None:
         return
-    poly = np.round(np.array(calibration.corners)).astype(np.int32)
+    poly = np.round(np.array(calibration.outline)).astype(np.int32)
     for line in calibration.grid_lines():
         cv2.polylines(frame, [line], False, GRID_COLOR, 1, cv2.LINE_AA)
     cv2.polylines(frame, [poly], True, MASK_COLOR, 1, cv2.LINE_AA)

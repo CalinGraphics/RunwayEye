@@ -16,7 +16,11 @@ from app.vision.annotate import crop_jpeg
 from app.vision.calibration import Calibration
 from app.vision.change_detector import ChangeDetector, ChangeParams
 from app.vision.fusion import Candidate, Track, Tracker, TrackerParams, fuse
-from app.vision.types import UNKNOWN_KEY, UNKNOWN_LABEL, BBox, Detection, Risk, Source
+from app.vision.types import UNKNOWN_KEY, UNKNOWN_LABEL, BBox, Detection, Risk, Source, class_group
+
+
+# Classes that stand up from the runway: measured by their height, located by their feet.
+UPRIGHT_GROUPS = {"persoana", "animal"}
 
 
 class Detector(Protocol):
@@ -163,12 +167,17 @@ class DetectionEngine:
     params: EngineParams = field(default_factory=EngineParams)
     yolo: Detector | None = None
     calibration: Calibration | None = None
+    # The source is a clip played in a loop: every pass shows the same objects again.
+    replay: bool = False
 
     def __post_init__(self) -> None:
         self.change = ChangeDetector(self.params.change_params())
         self.tracker = Tracker(self.params.tracker_params())
         self.frame_index = 0
         self._sites: dict[str, _Site] = {}
+        # Incidents the operator closed while a clip was playing. The clip brings the same object
+        # back on the next pass (and it stays in view, since nobody can pick it up); it is not new.
+        self._closed: dict[str, _Site] = {}
         self._yolo_cache: list[Candidate] = []
         self._global_frames = 0
         self._intrusion_frames = 0
@@ -191,6 +200,10 @@ class DetectionEngine:
     def close_incident(self, incident_id: str, absorb: bool = False) -> None:
         """Operator closed the incident. `absorb`: learn that spot as background (false alarm)."""
         self._commands.put(("close", (incident_id, absorb)))
+
+    def forget_closed(self) -> None:
+        """A different source: objects closed on the old one mean nothing here."""
+        self._commands.put(("forget", None))
 
     def restore_incident(self, incident_id: str, center: tuple[int, int], bbox: BBox, risk: str, present: bool) -> None:
         """An incident still open from before a restart, so the same object doesn't raise a second one."""
@@ -229,6 +242,8 @@ class DetectionEngine:
             elif cmd == "close":
                 incident_id, absorb = arg
                 site = self._sites.pop(incident_id, None)
+                if self.replay and site is not None:
+                    self._closed[incident_id] = site
                 for t in list(self.tracker.tracks):
                     if t.incident_id == incident_id:
                         if absorb:
@@ -238,6 +253,8 @@ class DetectionEngine:
                     self.change.absorb(site.bbox)
                     self.ignored.append(site.bbox)
                     events.append(IgnoredZones(list(self.ignored)))
+            elif cmd == "forget":
+                self._closed.clear()
             elif cmd == "restore":
                 incident_id, site = arg
                 self._sites.setdefault(incident_id, site)
@@ -351,6 +368,10 @@ class DetectionEngine:
                         site.present = True
                         return [ObjectReturned(incident_id)]
                     return []
+            for incident_id, site in self._closed.items():
+                if math.dist(site.center, t.cand.center) <= self.params.dedup_px:
+                    t.incident_id = incident_id
+                    return []
             det = self._build_detection(t, frame)
             t.incident_id = det.id
             self._sites[det.id] = _Site(center=t.cand.center, bbox=t.cand.bbox, risk=det.risk)
@@ -368,9 +389,13 @@ class DetectionEngine:
         distance = offset = size = None
         sector = None
         if self.calibration is not None:
-            pos = self.calibration.pixel_to_runway(*c.center)
+            # A person's box centre is at waist height and projects metres behind them on the runway;
+            # where they stand is where the box touches the ground.
+            upright = class_group(class_key) in UPRIGHT_GROUPS
+            point = (c.bbox.x + c.bbox.w // 2, c.bbox.y2) if upright else c.center
+            pos = self.calibration.pixel_to_runway(*point)
             distance, offset, sector = round(pos.distance_m, 1), round(pos.offset_m, 1), pos.sector
-            size = round(self.calibration.size_cm(c.bbox), 1)
+            size = round(self.calibration.size_cm(c.bbox, upright=upright), 1)
         risk = assess_risk(class_key, size, self.params.unknown_critical_cm)
         crop = crop_jpeg(frame, c.bbox)
         return Detection(

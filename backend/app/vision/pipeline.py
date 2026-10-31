@@ -16,6 +16,7 @@ from app.vision.annotate import annotate, encode_jpeg, placeholder_frame
 from app.vision.calibration import Calibration, RunwayGeometry
 from app.vision.capture import FrameSource
 from app.vision.engine import DetectionEngine, EngineParams, IgnoredZones
+from app.vision.scene import Scene
 from app.vision.types import BBox
 
 log = logging.getLogger(__name__)
@@ -48,8 +49,12 @@ class VisionService:
         )
         params = EngineParams.from_settings(settings)
         self._load_tuning(params)
+        # Sensitivity outside any clip scene, to come back to when a scene's own tuning ends.
+        self._base_tuning = {k: getattr(params, k) for k in TUNABLE}
         self.engine = DetectionEngine(params=params)
         self.calibration: Calibration | None = None
+        self.scene: Scene | None = None
+        self._calibrated_for = None  # the source the calibration was loaded for
         self.yolo = None
         self.yolo_state = "oprit" if not settings.enable_yolo else "se încarcă"
         self.yolo_error: str | None = None
@@ -125,6 +130,7 @@ class VisionService:
         self.s.video_source_file.write_text(json.dumps({"source": source}), encoding="utf-8")
         self.capture.switch(source)
         self.engine.reset_reference()
+        self.engine.forget_closed()
 
     def _load_ignored(self) -> None:
         try:
@@ -152,6 +158,8 @@ class VisionService:
     def tune(self, values: dict) -> dict:
         clean = {k: v for k, v in values.items() if k in TUNABLE}
         self.engine.update_params(**clean)
+        if self.scene is None:
+            self._base_tuning.update(clean)
         current = {k: getattr(self.engine.params, k) for k in TUNABLE}
         current.update(clean)
         try:
@@ -189,14 +197,32 @@ class VisionService:
             self.yolo_state = "eroare"
             self.yolo_error = self.yolo_error or (det.error if det else "necunoscută")
 
+    def save_calibration(self, cal: Calibration) -> None:
+        if self.scene is not None:
+            self.scene.save_corners(cal)
+        else:
+            cal.save(self.s.calibration_file)
+        self.set_calibration(cal)
+
     def _load_calibration(self, size: tuple[int, int]) -> None:
+        """Runway and corners for the source now playing: its own scene if it is a real clip
+        that has one, otherwise .env and data/calibration.json."""
+        active = self.capture.active
         try:
-            cal = Calibration.load(self.s.calibration_file, self.geometry, size)
+            self.scene = Scene.for_source(active.kind, active.target)
         except Exception:
-            log.exception("Invalid calibration file, ignoring it")
+            log.exception("Invalid scene file next to %s, ignoring it", active.target)
+            self.scene = None
+        self.geometry = self.scene.geometry if self.scene else runway_geometry(self.s)
+        scene_tuning = self.scene.tuning if self.scene else {}
+        self.engine.update_params(**{**self._base_tuning, **{k: v for k, v in scene_tuning.items() if k in TUNABLE}})
+        try:
+            cal = (self.scene.calibration(size) if self.scene
+                   else Calibration.load(self.s.calibration_file, self.geometry, size))
+        except Exception:
+            log.exception("Invalid calibration, ignoring it")
             cal = None
-        if cal is not None:
-            self.set_calibration(cal)
+        self.set_calibration(cal)
 
     def _run(self) -> None:
         # YOLO loads in this thread (it takes seconds), so the server starts instantly.
@@ -207,7 +233,6 @@ class VisionService:
         self.capture.rewind()
         last_seq = 0
         last_frame_at = time.monotonic()
-        calibration_loaded = False
         while not self._stop.is_set():
             seq, frame = self.capture.latest()
             if frame is None or seq == last_seq:
@@ -217,9 +242,9 @@ class VisionService:
                 self._stop.wait(0.005)
                 continue
             last_seq = seq
-            if not calibration_loaded:
+            if self._calibrated_for != self.capture.active:
                 self._load_calibration((frame.shape[1], frame.shape[0]))
-                calibration_loaded = True
+                self._calibrated_for = self.capture.active
             t0 = time.monotonic()
             try:
                 self._process(frame)
@@ -232,6 +257,8 @@ class VisionService:
             log.debug("frame %.1f ms", (time.monotonic() - t0) * 1000)
 
     def _process(self, frame: np.ndarray) -> None:
+        # Same thread as process(), so a plain attribute is enough.
+        self.engine.replay = self.capture.active.kind == "file"
         result = self.engine.process(frame)
         self.last_result = result
         status = None

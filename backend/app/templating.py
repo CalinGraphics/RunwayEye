@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from fastapi.templating import Jinja2Templates
 
 from app.config import FRONTEND_DIR, get_settings
+from app.vision.calibration import runway_ends
 
 templates = Jinja2Templates(directory=FRONTEND_DIR / "templates")
 
@@ -59,3 +60,4 @@ templates.env.filters["datetime"] = fmt_datetime
 templates.env.globals["duration"] = fmt_duration
 templates.env.globals["settings"] = get_settings()
 templates.env.globals["asset_version"] = asset_version
+templates.env.globals["runway_ends"] = runway_ends(get_settings().runway_name)

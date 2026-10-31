@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.templating import templates
-from app.vision.calibration import CORNER_NAMES, Calibration
+from app.vision.calibration import Calibration, corner_names, runway_ends
 
 router = APIRouter()
 
@@ -18,7 +18,9 @@ def calibrate_page(request: Request):
         "calibrate.html",
         {
             "corners": cal.corners if cal else [],
-            "corner_names": CORNER_NAMES,
+            "outline": cal.outline if cal else [],
+            "corner_names": corner_names(vision.s.runway_name),
+            "runway_ends": runway_ends(vision.s.runway_name),
             "frame_size": size or (vision.s.frame_width, vision.s.frame_width * 9 // 16),
             "geometry": vision.geometry,
         },
@@ -27,6 +29,8 @@ def calibrate_page(request: Request):
 
 class CalibrationIn(BaseModel):
     corners: list[tuple[float, float]] = Field(min_length=4, max_length=4)
+    # Every point clicked around the runway, corners included; missing = just the corners.
+    outline: list[tuple[float, float]] | None = Field(default=None, min_length=4, max_length=16)
 
 
 @router.post("/calibrate")
@@ -37,11 +41,10 @@ def save_calibration(request: Request, body: CalibrationIn):
     if size is None:
         raise HTTPException(409, "Nu există încă niciun cadru video")
     try:
-        cal = Calibration(body.corners, size, vision.geometry)
+        cal = Calibration(body.corners, size, vision.geometry, body.outline)
     except Exception:
         raise HTTPException(422, "Colțurile nu formează un patrulater valid")
-    cal.save(st.settings.calibration_file)
-    vision.set_calibration(cal)
+    vision.save_calibration(cal)
     vision.clear_ignored()
     st.store.update_camera(
         {"id": st.settings.camera_id, "name": st.settings.camera_name, "source": st.settings.video_source,
