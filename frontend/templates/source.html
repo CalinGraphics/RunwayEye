@@ -81,7 +81,6 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.detail || "Încărcarea nu a reușit");
           this.say(data.message);
-          setTimeout(() => (this.stamp = Date.now()), 1500);
           await this.refresh();
         } catch (err) {
           this.say(err.message, true);

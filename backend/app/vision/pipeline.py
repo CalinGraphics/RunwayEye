@@ -163,8 +163,10 @@ class VisionService:
         current = {k: getattr(self.engine.params, k) for k in TUNABLE}
         current.update(clean)
         try:
+            # A clip's scene tuning is the clip's; the file keeps the camera's own values.
+            saved = current if self.scene is None else self._base_tuning
             self.s.tuning_file.parent.mkdir(parents=True, exist_ok=True)
-            self.s.tuning_file.write_text(json.dumps(current, indent=2), encoding="utf-8")
+            self.s.tuning_file.write_text(json.dumps(saved, indent=2), encoding="utf-8")
         except OSError:
             log.warning("Could not save tuning values")
         return current
@@ -197,6 +199,15 @@ class VisionService:
             self.yolo_state = "eroare"
             self.yolo_error = self.yolo_error or (det.error if det else "necunoscută")
 
+    def reset_calibration(self) -> None:
+        """Forget the corners of the source now playing: the clip's own, or the camera's."""
+        if self.scene is not None:
+            self.scene.clear_corners()
+        else:
+            self.s.calibration_file.unlink(missing_ok=True)
+            self.clear_ignored()
+        self.set_calibration(None)
+
     def save_calibration(self, cal: Calibration) -> None:
         if self.scene is not None:
             self.scene.save_corners(cal)
@@ -223,6 +234,11 @@ class VisionService:
             log.exception("Invalid calibration, ignoring it")
             cal = None
         self.set_calibration(cal)
+        # The camera's dismissed spots don't belong on a clip filmed elsewhere.
+        if self.scene is not None:
+            self.engine.set_ignored([])
+        else:
+            self._load_ignored()
 
     def _run(self) -> None:
         # YOLO loads in this thread (it takes seconds), so the server starts instantly.
@@ -273,7 +289,8 @@ class VisionService:
             self._raw = frame
             self._seq += 1
         for ev in result.events:
-            if isinstance(ev, IgnoredZones):
+            # False alarms dismissed on a clip's scene stay with that clip, not the camera.
+            if isinstance(ev, IgnoredZones) and self.scene is None:
                 self._save_ignored(ev.zones)
                 continue
             try:

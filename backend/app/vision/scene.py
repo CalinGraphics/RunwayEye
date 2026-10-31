@@ -45,6 +45,11 @@ class Scene:
             return None
         return Calibration.from_data(self.data, self.geometry, frame_size)
 
+    def clear_corners(self) -> None:
+        for key in ("corners", "outline", "corner_names"):
+            self.data.pop(key, None)
+        self.path.write_text(json.dumps(self.data, indent=2, ensure_ascii=False), encoding="utf-8")
+
     def save_corners(self, cal: Calibration) -> None:
         """The operator recalibrated while the clip played: the corners belong to the clip."""
         self.data.update(corners=[list(c) for c in cal.corners], outline=[list(c) for c in cal.outline],

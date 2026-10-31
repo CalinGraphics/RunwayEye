@@ -70,6 +70,18 @@
       </div>
     </header>
 
+    {# On a phone one view at a time fills the screen (alerts, or the runway: camera and map); on desktop they sit side by side. #}
+    <div class="px-4 pt-2 lg:hidden">
+      <div role="tablist" aria-label="Ce afișează ecranul" class="mtabs">
+        <button type="button" role="tab" class="seg" :aria-selected="(mview === 'alerts').toString()" @click="mview = 'alerts'">
+          Alerte <span x-show="incidents.length" x-cloak class="mtab-count" x-text="incidents.length"></span>
+        </button>
+        <button type="button" role="tab" class="seg" :aria-selected="(mview === 'live').toString()" @click="mview = 'live'">
+          <span class="live-dot"></span> Pista live
+        </button>
+      </div>
+    </div>
+
     <div x-show="!connected" x-cloak class="flex items-center justify-center gap-2 bg-error px-4 py-1.5 text-center text-sm font-semibold text-error-content" role="alert">
       Conexiunea cu serverul s-a pierdut. Alertele noi nu ajung aici până revine. Reconectez…
     </div>
@@ -77,7 +89,7 @@
     <main class="grid grid-cols-[minmax(0,1fr)] gap-4 px-4 py-3 sm:px-8 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_440px]">
       <section class="order-2 flex min-h-0 min-w-0 flex-col gap-3 lg:order-1">
 
-        <div class="panel monitor flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1">
+        <div class="panel monitor flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1" :class="mview !== 'live' && 'max-lg:hidden'">
           <img src="/video" alt="Flux video live de la camera pistei" class="max-h-full max-w-full object-contain">
           <span class="monitor-corner top-3 left-3 border-t-2 border-l-2" aria-hidden="true"></span>
           <span class="monitor-corner top-3 right-3 border-t-2 border-r-2" aria-hidden="true"></span>
@@ -107,7 +119,7 @@
           </div>
         </div>
 
-        <div class="panel relative shrink-0">
+        <div class="panel relative shrink-0" :class="mview !== 'live' && 'max-lg:hidden'">
           <div class="panel-head">
             <h2 title="{{ runway_ends[0] }} și {{ runway_ends[1] }} sunt cele două capete ale pistei, numite după direcția de zbor ({{ runway_ends[0] }}0° și {{ runway_ends[1] }}0° pe busolă)">Unde e obiectul pe pistă</h2>
             <span x-show="status && status.calibrated" x-cloak class="hidden shrink-0 items-center gap-3 text-xs text-base-content/70 sm:flex">
@@ -118,7 +130,7 @@
             </span>
           </div>
           <div class="overflow-x-auto">
-          <div class="relative mx-auto w-full min-w-[560px] max-w-[1100px] px-2 py-1">
+          <div class="relative mx-auto w-full sm:min-w-[560px] max-w-[1100px] px-2 py-1">
             <div class="relative w-full transition-[opacity,filter] duration-300" style="aspect-ratio: 1000 / 200"
                  :class="status && !status.calibrated && 'opacity-35 grayscale'">
               <svg viewBox="0 0 1000 200" class="absolute inset-0 size-full" role="img" aria-label="Harta pistei cu sectoare">
@@ -188,7 +200,7 @@
         </div>
       </section>
 
-      <aside class="panel order-1 flex min-h-0 min-w-0 flex-col lg:order-2" aria-labelledby="alerts-title">
+      <aside class="panel order-1 flex min-h-0 min-w-0 flex-col max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none lg:order-2" aria-labelledby="alerts-title" :class="mview !== 'alerts' && 'max-lg:hidden'">
         <div class="panel-head">
           <h2 id="alerts-title">Alerte active</h2>
           <span class="flex items-center gap-2">
@@ -196,7 +208,7 @@
             <span class="readout grid size-7 place-items-center rounded-full bg-base-300 text-sm font-bold" x-text="incidents.length">0</span>
           </span>
         </div>
-        <div class="flex-1 space-y-2.5 overflow-y-auto p-2.5 lg:max-h-none">
+        <div class="flex-1 space-y-3 overflow-y-auto p-2.5 max-lg:px-0 lg:max-h-none">
           <div x-show="!incidents.length" class="flex h-full flex-col items-center justify-center gap-3 px-6 py-8 text-center lg:py-10">
             <div class="radar w-24 lg:w-32" aria-hidden="true"></div>
             <p class="text-xl font-bold text-success">Pistă liberă</p>

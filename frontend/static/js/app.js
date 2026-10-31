@@ -13,7 +13,7 @@ const ACTION_LABELS = {
   resolve: "Obiect eliminat",
   "false-alarm": "Alarmă falsă",
 };
-const ACTION_BUTTONS = { confirm: "btn-primary", dispatch: "btn-secondary", resolve: "btn-success" };
+const ACTION_BUTTONS = { confirm: "btn-primary", dispatch: "btn-primary", resolve: "btn-success" };
 
 const RE = {
   // Each (re)connection receives a full "hello" state, so nothing is lost while the network is down.
@@ -188,6 +188,7 @@ document.addEventListener("alpine:init", () => {
     toasts: [],
     zoomId: null,
     hl: null,
+    mview: "alerts", // phone layout: the alerts, or the live runway (camera and map)
     soundOn: false,
     showQr: false,
     qrIp: null, // address picked in the phone window; null = the most likely one (first in the list)
@@ -267,6 +268,7 @@ document.addEventListener("alpine:init", () => {
 
     onNew(inc) {
       if (!this.incidents.some((i) => i.id === inc.id)) this.incidents.unshift(inc);
+      this.mview = "alerts"; // on a phone, a new alert brings its list to the front
       clearTimeout(this._alarmTimer);
       this.alarm = { inc, text: RE.alertText(inc) };
       this._alarmTimer = setTimeout(() => (this.alarm = null), 6000);
