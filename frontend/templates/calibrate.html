@@ -209,7 +209,7 @@
         Colțurile pistei sunt în afara imaginii, așa că aici se vede doar conturul. Dacă salvezi, colțurile devin punctele de pe imagine.
       </p>
 
-      <ul class="mt-2 max-h-72 space-y-1 overflow-y-auto px-3 pb-3 text-sm" x-show="points.length">
+      <ul class="mt-2 space-y-1 lg:max-h-72 lg:overflow-y-auto px-3 pb-3 text-sm" x-show="points.length">
         <template x-for="(p, i) in points" :key="i">
           <li class="flex items-center gap-2.5 rounded-[14px] px-2.5 py-1.5" :class="cornerNo(i) && 'bg-primary/8'">
             <span class="readout flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
