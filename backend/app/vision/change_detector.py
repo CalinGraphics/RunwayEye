@@ -1,7 +1,4 @@
-"""Change detection against a clean-runway reference image.
-
-Catches any new object, including classes the YOLO model was never trained on.
-"""
+"""Catches any new object, including classes the YOLO model was never trained on."""
 
 from dataclasses import dataclass, field
 

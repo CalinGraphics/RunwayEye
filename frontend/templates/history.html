@@ -30,25 +30,18 @@
 {% endblock %}
 {% block page_title %}Istoric incidente{% endblock %}
 {% block content %}
-<main class="space-y-4 p-4 sm:p-6" x-data="historyPage()">
-  <div class="flex flex-wrap items-center justify-between gap-2">
-    <p class="text-sm text-base-content/60">Fiecare pas al operatorului și al echipei e salvat cu ora. Apasă pe un incident pentru cronologie.</p>
-    <span class="status-chip">
-      <span class="status-dot" :class="live ? 'bg-success' : 'bg-base-content/30'"></span>
-      <span x-text="live ? 'Se actualizează live' : 'Actualizare live oprită'">Se conectează…</span>
-    </span>
-  </div>
+<main class="space-y-4 px-4 py-4 sm:px-8 sm:py-6" x-data="historyPage()">
 
   <form id="history-filters" class="panel grid grid-cols-2 gap-3 p-3 sm:grid-cols-4 lg:flex lg:flex-wrap lg:items-end"
         hx-get="/incidents" hx-target="#history-table" hx-trigger="change, keyup changed delay:400ms from:input[name=sector]" hx-push-url="true">
-    <label class="flex flex-col gap-1 text-xs text-base-content/60">Perioadă
+    <label class="flex flex-col gap-1 text-xs text-base-content/70">Perioadă
       <select name="period" class="select select-sm w-full lg:w-36">
         {% for value, label in [("hour", "Ultima oră"), ("today", "Azi"), ("week", "7 zile"), ("all", "Tot")] %}
         <option value="{{ value }}" {{ "selected" if filters.period == value }}>{{ label }}</option>
         {% endfor %}
       </select>
     </label>
-    <label class="flex flex-col gap-1 text-xs text-base-content/60">Stare
+    <label class="flex flex-col gap-1 text-xs text-base-content/70">Stare
       <select name="status" class="select select-sm w-full lg:w-40">
         <option value="">Toate</option>
         <option value="open" {{ "selected" if filters.status == "open" }}>Deschise</option>
@@ -57,7 +50,7 @@
         {% endfor %}
       </select>
     </label>
-    <label class="flex flex-col gap-1 text-xs text-base-content/60">Risc
+    <label class="flex flex-col gap-1 text-xs text-base-content/70">Risc
       <select name="risk" class="select select-sm w-full lg:w-36">
         <option value="">Toate</option>
         {% for r in ["critic", "mediu", "de verificat"] %}
@@ -65,9 +58,13 @@
         {% endfor %}
       </select>
     </label>
-    <label class="flex flex-col gap-1 text-xs text-base-content/60">Sector
+    <label class="flex flex-col gap-1 text-xs text-base-content/70">Sector
       <input name="sector" value="{{ filters.sector }}" placeholder="ex. C sau C2" class="input input-sm w-full uppercase placeholder:normal-case lg:w-28">
     </label>
+    <span class="status-chip col-span-2 justify-self-start sm:col-span-4 lg:ml-auto lg:self-center">
+      <span class="status-dot" :class="live ? 'bg-success' : 'bg-base-content/30'"></span>
+      <span x-text="live ? 'Live' : 'Live oprit'">Se conectează…</span>
+    </span>
   </form>
 
   <div id="history-table">

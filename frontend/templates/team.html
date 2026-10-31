@@ -2,9 +2,9 @@
 {% from "partials/icons.html" import icon %}
 {% block title %}RunwayEye · Echipa de intervenție{% endblock %}
 {% block head %}
-<meta name="theme-color" content="#07090d">
+<meta name="theme-color" content="#f7f3ea">
 {% endblock %}
-{% block body_class %}min-h-dvh select-none bg-base-100 text-base-content{% endblock %}
+{% block body_class %}min-h-dvh select-none bg-base-200 text-base-content{% endblock %}
 {% block body %}
 <div x-data='teamPage({{ {"runway": settings.runway_name} | tojson }})' class="mx-auto flex min-h-dvh max-w-lg flex-col"
      :class="{ 'phone-alarm text-white': armed && mode === 'alarm', 'bg-primary text-primary-content': armed && mode === 'enroute' }">
@@ -14,10 +14,11 @@
       <span class="brand-mark size-7" aria-hidden="true"></span>
       <span class="flex flex-col leading-tight">
         <span class="text-sm font-extrabold tracking-[0.08em]">Echipa de intervenție</span>
-        <span class="font-mono text-[0.65rem] opacity-60">RunwayEye · pista {{ settings.runway_name }}</span>
+        <span class="font-mono text-[0.65rem] opacity-75">RunwayEye · pista {{ settings.runway_name }}</span>
       </span>
     </span>
-    <span class="flex items-center gap-1.5 rounded-full bg-black/25 px-2.5 py-1 text-xs" role="status">
+    <span class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold" role="status"
+          :class="armed && mode !== 'calm' ? 'bg-black/25' : 'border border-line bg-base-100'">
       <span class="size-2 rounded-full" :class="connected ? 'bg-success' : 'bg-error animate-pulse'"></span>
       <span x-text="connected ? 'Conectat' : 'Reconectare…'">Reconectare…</span>
     </span>
@@ -33,10 +34,10 @@
       <div class="radar" data-tone="primary" aria-hidden="true"></div>
       <div>
         <h1 class="text-3xl font-extrabold">Pregătit de tură?</h1>
-        <p class="mt-2 text-base-content/65">O singură atingere permite telefonului să sune și să vibreze la alertă.</p>
+        <p class="mt-2 text-base-content/65">O atingere, ca telefonul să poată suna și vibra.</p>
       </div>
       <button class="big-action btn-primary w-full" @click="arm()">{{ icon("bell", "size-7") }} Activează alertele</button>
-      <p class="text-sm text-base-content/50">Lasă pagina deschisă, cu ecranul pornit.</p>
+      <p class="text-sm text-base-content/70">Lasă pagina deschisă, cu ecranul pornit.</p>
       <p x-show="incidents.length" x-cloak class="risk-tag" data-tone="warning"
          x-text="incidents.length + (incidents.length === 1 ? ' alertă deschisă acum' : ' alerte deschise acum')"></p>
     </div>
@@ -47,9 +48,9 @@
       <div class="radar w-64" aria-hidden="true"></div>
       <div>
         <p class="text-4xl font-extrabold text-success">Pistă liberă</p>
-        <p class="mt-2 text-base-content/60">Pista {{ settings.runway_name }} · aștept alerte</p>
+        <p class="mt-3 flex items-center justify-center gap-2 text-base-content/70"><span class="sign-mandatory text-sm">{{ settings.runway_name | replace("/", "-") }}</span> aștept alerte</p>
       </div>
-      <p class="max-w-xs text-sm text-base-content/50">La o alertă ecranul se face roșu, telefonul sună și vibrează.</p>
+      <p class="max-w-xs text-sm text-base-content/70">La o alertă ecranul se face roșu, telefonul sună și vibrează.</p>
     </div>
   </template>
 
@@ -66,7 +67,7 @@
       <div class="grid grid-cols-[1fr_auto] items-center gap-4 rounded-box bg-black/25 p-4">
         <div class="min-w-0">
           <p class="font-mono text-xs tracking-[0.2em] uppercase opacity-75">Sector</p>
-          <p class="readout text-7xl leading-none font-extrabold" x-text="current.sector || '—'"></p>
+          <p class="mt-2 text-6xl"><span x-show="current.sector" class="sign-location" x-text="current.sector"></span><span x-show="!current.sector" class="font-extrabold">—</span></p>
           <p class="mt-2 text-xl leading-snug font-bold first-letter:uppercase" x-text="current.object_class"></p>
           <p x-show="current.severity" class="mt-1 text-sm leading-snug opacity-90"
              x-text="current.severity ? 'Severitate ' + current.severity.nivel + '/5: ' + current.severity.pericole.join(', ') : ''"></p>

@@ -202,6 +202,9 @@ class VisionService:
         # YOLO loads in this thread (it takes seconds), so the server starts instantly.
         self._load_ignored()
         self._load_yolo()
+        # A clip kept playing while the models loaded: start it over, so the clean runway is
+        # learned from its first seconds and not halfway through a hand placing an object.
+        self.capture.rewind()
         last_seq = 0
         last_frame_at = time.monotonic()
         calibration_loaded = False

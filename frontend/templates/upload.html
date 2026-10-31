@@ -4,41 +4,38 @@
 {% set active = "upload" %}
 {% block page_title %}Test pe o poză sau un clip{% endblock %}
 {% block content %}
-<main class="space-y-4 p-4 sm:p-6">
-  <p class="text-sm text-base-content/60">Implicit rezultatul apare doar aici. Bifați „Trimite ca incident real” ca detecțiile să pornească alerta pe panou și pe telefonul echipei și să ajungă în istoric și în Supabase.</p>
+<main class="px-4 py-4 sm:px-8 sm:py-6">
+  <form class="panel max-w-5xl space-y-4 p-4 sm:p-5" hx-post="/upload" hx-encoding="multipart/form-data"
+        hx-target="#upload-result" hx-indicator="#upload-busy" hx-disabled-elt="find button" x-data="{ name: '', over: false }">
+    <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-box border-2 border-dashed px-4 py-10 text-center transition-colors"
+           :class="over ? 'border-primary bg-primary/5' : 'border-line bg-base-200/50 hover:border-primary/60'"
+           @dragover.prevent="over = true" @dragleave="over = false"
+           @drop.prevent="over = false; $refs.file.files = $event.dataTransfer.files; name = $refs.file.files[0]?.name || ''">
+      <span class="icon-tile size-12">{{ icon("upload", "size-6") }}</span>
+      <span class="font-semibold" x-text="name || 'Alege sau trage aici o poză ori un clip'">Alege sau trage aici o poză ori un clip</span>
+      <span class="text-xs text-base-content/70">Pozele trec doar prin modelul YOLO. Clipurile, de cel mult 2 minute, trec și prin detecția schimbărilor.</span>
+      <input x-ref="file" type="file" name="file" required accept="image/*,video/*" class="sr-only" @change="name = $event.target.files[0]?.name || ''">
+    </label>
 
-  <form class="panel grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_260px]" hx-post="/upload" hx-encoding="multipart/form-data"
-        hx-target="#upload-result" hx-indicator="#upload-busy" hx-disabled-elt="find button" x-data="{ name: '' }">
-    <div class="space-y-4">
-      <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-box border-2 border-dashed border-line bg-base-100 px-4 py-10 text-center transition-colors hover:border-primary/60">
-        {{ icon("upload", "size-8 text-primary") }}
-        <span class="font-semibold" x-text="name || 'Alege o poză sau un clip'">Alege o poză sau un clip</span>
-        <span class="text-xs text-base-content/50">JPG, PNG, MP4… · clipurile se analizează cel mult 2 minute</span>
-        <input type="file" name="file" required accept="image/*,video/*" class="sr-only" @change="name = $event.target.files[0]?.name || ''">
-      </label>
-      <label class="flex cursor-pointer items-start gap-2 text-sm">
+    <div class="grid gap-2 sm:grid-cols-2">
+      <label class="flex cursor-pointer items-start gap-3 rounded-[16px] border border-line px-4 py-3 has-checked:border-primary has-checked:bg-primary/5">
         <input type="checkbox" name="use_calibration" value="true" class="checkbox checkbox-sm checkbox-primary mt-0.5">
-        <span>Folosește calibrarea camerei <span class="text-base-content/50">(doar dacă e filmat din același loc)</span></span>
+        <span class="text-sm"><span class="font-semibold">Folosește calibrarea</span><span class="block text-base-content/70">Doar dacă e filmat din același loc</span></span>
       </label>
-      <label class="flex cursor-pointer items-start gap-2 text-sm">
+      <label class="flex cursor-pointer items-start gap-3 rounded-[16px] border border-line px-4 py-3 has-checked:border-error has-checked:bg-error/5">
         <input type="checkbox" name="send_alert" value="true" class="checkbox checkbox-sm checkbox-error mt-0.5">
-        <span>Trimite ca incident real <span class="text-base-content/50">(alertă pe panou și pe telefon, salvat în istoric și în Supabase)</span></span>
+        <span class="text-sm"><span class="font-semibold">Trimite ca incident real</span><span class="block text-base-content/70">Pornește alarma și intră în istoric</span></span>
       </label>
     </div>
-    <div class="flex flex-col justify-between gap-4">
-      <ul class="space-y-2 text-sm text-base-content/70">
-        <li><span class="font-semibold text-base-content">Poză:</span> doar modelul YOLO (detecția schimbărilor are nevoie de imaginea pistei curate).</li>
-        <li><span class="font-semibold text-base-content">Clip:</span> ambele straturi; primele secunde trebuie să arate pista curată.</li>
-      </ul>
-      <div class="flex flex-col gap-2">
-        <button class="btn btn-primary w-full">Analizează</button>
-        <span id="upload-busy" class="htmx-indicator flex items-center justify-center gap-2 text-sm text-base-content/70">
-          <span class="loading loading-spinner loading-sm"></span> Analizez…
-        </span>
-      </div>
+
+    <div class="flex items-center justify-end gap-3">
+      <span id="upload-busy" class="htmx-indicator flex items-center gap-2 text-sm text-base-content/70">
+        <span class="loading loading-spinner loading-sm"></span> Analizez…
+      </span>
+      <button class="btn btn-primary min-w-40">Analizează</button>
     </div>
   </form>
 
-  <div id="upload-result" aria-live="polite"></div>
+  <div id="upload-result" class="mt-4 max-w-5xl" aria-live="polite"></div>
 </main>
 {% endblock %}

@@ -1,10 +1,3 @@
-"""Frame capture from a camera index, a video file (looped) or a stream URL, in its own thread.
-
-The same code reads the webcam on the mock-up, a recorded clip or an RTSP camera; the source comes
-from VIDEO_SOURCE or from the "Sursă video" page (switch() changes it while running). If the source
-can't be opened, it switches to FALLBACK_VIDEO.
-"""
-
 import logging
 import threading
 import time
@@ -141,6 +134,11 @@ class FrameSource:
         with self._lock:
             self._pending = spec
             self.primary = spec  # status() shows the chosen source right away
+
+    def rewind(self) -> None:
+        """Play a clip from its start again (a live camera has nothing to rewind)."""
+        if self.primary.kind == "file" and not self.using_fallback:
+            self.switch(self.primary.raw)
 
     def latest(self) -> tuple[int, np.ndarray | None]:
         with self._lock:

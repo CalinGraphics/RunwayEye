@@ -11,8 +11,8 @@
     "postinstall": "npm run build"
   },
   "devDependencies": {
-    "@fontsource-variable/archivo": "^5.3.0",
-    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource/b612-mono": "^5.3.0",
     "@tailwindcss/cli": "^4.1.0",
     "alpinejs": "^3.14.0",
     "daisyui": "^5.0.0",

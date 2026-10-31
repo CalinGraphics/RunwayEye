@@ -69,22 +69,22 @@
 {% block page_title %}Calibrarea pistei{% endblock %}
 {% block content %}
 {% set cfg = {"names": corner_names, "corners": corners, "size": frame_size} %}
-<main class="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_340px]" x-data='calibrator({{ cfg | tojson }})'>
+<main class="grid gap-4 px-4 py-4 sm:px-8 sm:py-6 xl:grid-cols-[minmax(0,1fr)_340px]" x-data='calibrator({{ cfg | tojson }})'>
   <section class="panel overflow-hidden">
     <div class="panel-head">
-      <h2>Cadru de la cameră · atinge colțurile pistei</h2>
+      <h2>Atinge cele 4 colțuri, în ordine</h2>
       <button class="btn btn-ghost btn-sm" @click="stamp = Date.now()">{{ icon("refresh") }} Cadru nou</button>
     </div>
-    <div class="bg-black p-2 sm:p-3">
+    <div class="bg-[#0d1626] p-2 sm:p-3">
       <div class="relative cursor-crosshair touch-manipulation select-none" @click="add($event)">
         <img :src="'/snapshot?raw=1&t=' + stamp" @load="loaded($event)" alt="Cadru curent de la cameră" class="block w-full rounded-field" draggable="false">
         {# .camel: HTML lowercases attribute names, and SVG only understands "viewBox". #}
         <svg class="pointer-events-none absolute inset-0 size-full" :view-box.camel="`0 0 ${w} ${h}`" preserveAspectRatio="none">
-          <polygon x-show="points.length > 1" :points="polygon" fill="rgba(63,205,238,0.16)" stroke="#3fcdee" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <polygon x-show="points.length > 1" :points="polygon" fill="rgba(23,105,255,0.16)" stroke="#1769ff" stroke-width="2" vector-effect="non-scaling-stroke"/>
         </svg>
         {# Corner markers as HTML: Alpine's x-for can't clone <template> inside SVG. #}
         <template x-for="(p, i) in points" :key="i">
-          <span class="pointer-events-none absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-black bg-primary font-mono text-xs font-bold text-primary-content shadow-lg"
+          <span class="pointer-events-none absolute flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-primary font-mono text-xs font-bold text-primary-content shadow-lg"
                 :style="`left:${p[0] / w * 100}%;top:${p[1] / h * 100}%`" x-text="i + 1"></span>
         </template>
       </div>
@@ -93,11 +93,36 @@
 
   <aside class="space-y-4">
     <div class="panel">
-      <div class="panel-head"><h2>Ordinea colțurilor</h2><span class="readout text-sm font-bold text-base-content" x-text="points.length + '/4'"></span></div>
-      <ol class="space-y-1 p-3 text-sm">
+      <div class="panel-head"><h2>Colțurile pistei</h2><span class="readout text-sm font-bold text-base-content" x-text="points.length + '/4'"></span></div>
+      {# Seen from above. Looking from threshold 09 towards 27, "left" is the top edge, so the order runs
+         top-left, bottom-left, bottom-right, top-right (CORNER_NAMES in calibration.py). #}
+      <div class="px-4 sm:px-5">
+        <svg viewBox="0 0 300 120" class="w-full" role="img" aria-label="Schema pistei cu ordinea colțurilor">
+          <rect x="30" y="22" width="240" height="64" rx="3" fill="#26334a"/>
+          {% for k in range(5) %}
+          <rect x="35" y="{{ 30 + k * 10 }}" width="10" height="5" fill="#fff" opacity="0.9"/>
+          <rect x="255" y="{{ 30 + k * 10 }}" width="10" height="5" fill="#fff" opacity="0.9"/>
+          {% endfor %}
+          <line x1="58" y1="54" x2="242" y2="54" stroke="#fff" stroke-width="1.5" stroke-dasharray="9 7" opacity="0.6"/>
+          <text x="14" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">09</text>
+          <text x="286" y="58" font-size="13" font-weight="700" font-family="B612 Mono, Consolas, monospace" fill="#1769ff" text-anchor="middle">27</text>
+          <path d="M60 104h170" stroke="#6b7385" stroke-width="1.5"/>
+          <path d="M230 100l7 4-7 4z" fill="#6b7385"/>
+          <text x="150" y="117" font-size="9" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#4b5363" text-anchor="middle">privești de la 09 spre 27</text>
+          {% for cx, cy in [(30, 22), (30, 86), (270, 86), (270, 22)] %}
+          <g :class="{{ loop.index0 }} === points.length && 'corner-next'">
+            <circle cx="{{ cx }}" cy="{{ cy }}" r="10" stroke-width="2"
+                    :class="{{ loop.index0 }} < points.length ? 'fill-primary stroke-white' : {{ loop.index0 }} === points.length ? 'fill-white stroke-primary' : 'fill-white stroke-[#c9c1b0]'"/>
+            <text x="{{ cx }}" y="{{ cy + 4 }}" font-size="11" font-weight="700" font-family="B612 Mono, Consolas, monospace" text-anchor="middle"
+                  :class="{{ loop.index0 }} < points.length ? 'fill-white' : 'fill-base-content'">{{ loop.index }}</text>
+          </g>
+          {% endfor %}
+        </svg>
+      </div>
+      <ol class="space-y-1 px-3 pt-2 pb-3 text-sm">
         <template x-for="(name, i) in names" :key="i">
-          <li class="flex items-center gap-2.5 rounded-field px-2.5 py-2"
-              :class="i === points.length ? 'bg-primary/12 text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/40'">
+          <li class="flex items-center gap-2.5 rounded-[14px] px-2.5 py-2"
+              :class="i === points.length ? 'bg-primary/10 font-semibold text-primary' : i < points.length ? 'text-base-content' : 'text-base-content/65'">
             <span class="readout flex size-6 items-center justify-center rounded-full border text-xs"
                   :class="i < points.length ? 'border-primary bg-primary text-primary-content' : 'border-current'" x-text="i + 1"></span>
             <span class="first-letter:uppercase" x-text="name"></span>
@@ -109,21 +134,16 @@
         <button class="btn btn-sm btn-ghost" @click="clear()" :disabled="!points.length">Reia</button>
         <button class="btn btn-sm btn-primary ml-auto" @click="save()" :disabled="points.length !== 4">Salvează</button>
       </div>
-      <p x-show="message" x-cloak class="px-3 pb-3 text-sm" :class="error ? 'text-error' : 'text-success'" x-text="message"></p>
+      <p x-show="message" x-cloak class="px-4 pb-3 text-sm font-medium" :class="error ? 'text-error' : 'text-success'" x-text="message" role="status"></p>
     </div>
 
-    <div class="panel p-4 text-sm text-base-content/70">
-      <p class="eyebrow mb-2">Cum se calibrează</p>
-      <ul class="list-disc space-y-1.5 pl-4">
-        <li>„Stânga” și „dreapta” sunt văzute de la pragul 09, privind spre pragul 27.</li>
-        <li>Poligonul devine masca pistei: ce e în afara lui nu dă alerte.</li>
-        <li>Pista: {{ geometry.length_m | round | int }} m × {{ geometry.width_m | round | int }} m, {{ geometry.sectors_along }} × {{ geometry.sectors_across }} sectoare (valori din <span class="readout">.env</span>, de verificat).</li>
-        {% if geometry.mockup_length_cm %}
-        <li>Macheta: {{ geometry.mockup_length_cm | round | int }} × {{ geometry.mockup_width_cm | round | int }} cm, pentru estimarea mărimii obiectelor.</li>
-        {% endif %}
-        <li>Nu mutați camera după calibrare. Marcați poziția machetei cu bandă pe masă.</li>
-      </ul>
-      <button class="btn btn-sm btn-ghost mt-3 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
+    <div class="panel space-y-2 p-4 text-sm text-base-content/75 sm:px-5">
+      <p>Ce e în afara conturului nu dă alerte.</p>
+      <p>Nu muta camera după calibrare.</p>
+      <p class="readout text-xs text-base-content/60">
+        {{ geometry.length_m | round | int }} × {{ geometry.width_m | round | int }} m · {{ geometry.sectors_along }} × {{ geometry.sectors_across }} sectoare{% if geometry.mockup_length_cm %} · machetă {{ geometry.mockup_length_cm | round | int }} × {{ geometry.mockup_width_cm | round | int }} cm{% endif %}
+      </p>
+      <button class="btn btn-sm btn-ghost -ml-2 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
     </div>
   </aside>
 </main>

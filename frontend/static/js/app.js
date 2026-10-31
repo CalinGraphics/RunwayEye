@@ -119,7 +119,7 @@ const RE = {
   },
 
   alertText(inc) {
-    const parts = ["⚠ FOD DETECTAT", inc.object_class];
+    const parts = ["FOD detectat", inc.object_class];
     if (inc.sector) parts.push(`Sector ${inc.sector}`);
     parts.push(`risc ${inc.risk}`);
     return parts.join(" · ");
@@ -127,27 +127,30 @@ const RE = {
 };
 
 // Browsers only allow sound after a user gesture: unlock() must run inside a click/tap.
+// muted is the operator's choice; unlocked is the browser's permission.
 class Alarm {
   constructor(src) {
     this.audio = new Audio(src);
     this.audio.preload = "auto";
     this.unlocked = false;
+    this.muted = false;
   }
   async unlock() {
+    // Already allowed: don't touch the element, an alarm may be ringing.
+    if (this.unlocked) return true;
     try {
       this.audio.muted = true;
       await this.audio.play();
       this.audio.pause();
       this.audio.currentTime = 0;
-      this.audio.muted = false;
       this.unlocked = true;
-    } catch {
-      this.audio.muted = false;
-    }
+    } catch {}
+    this.audio.muted = false;
     return this.unlocked;
   }
   play(times = 2) {
-    if (!this.unlocked) return;
+    if (!this.unlocked || this.muted) return;
+    clearTimeout(this._cut);
     let n = 0;
     const a = this.audio;
     a.onended = () => {
@@ -159,7 +162,13 @@ class Alarm {
     a.currentTime = 0;
     a.play().catch(() => {});
   }
+  // A short sample, so the operator hears that sound works.
+  preview() {
+    this.play(1);
+    this._cut = setTimeout(() => this.stop(), 600);
+  }
   stop() {
+    clearTimeout(this._cut);
     this.audio.onended = null;
     this.audio.pause();
     this.audio.currentTime = 0;
@@ -225,11 +234,28 @@ document.addEventListener("alpine:init", () => {
       this.refreshStatus();
       setInterval(() => this.refreshStatus(), 2000);
       setInterval(() => (this.now = Date.now()), 500);
-      document.addEventListener("pointerdown", () => this.enableSound(), { once: true });
+      // The first tap anywhere unlocks audio, so alarms ring even if nobody pressed the sound button.
+      // Taps on the button itself are left to toggleSound(), otherwise one tap would unlock and mute.
+      const autoUnlock = async (e) => {
+        if (e.target.closest("[data-sound-toggle]")) return;
+        document.removeEventListener("pointerdown", autoUnlock);
+        if ((await this.sound.unlock()) && !this.sound.muted) this.soundOn = true;
+      };
+      document.addEventListener("pointerdown", autoUnlock);
     },
 
-    async enableSound() {
+    async toggleSound() {
+      if (this.soundOn) {
+        this.sound.muted = true;
+        this.sound.stop();
+        this.soundOn = false;
+        this.toast("Sunet oprit. Alarmele noi nu se vor auzi.");
+        return;
+      }
+      this.sound.muted = false;
       this.soundOn = await this.sound.unlock();
+      if (this.soundOn) this.sound.preview();
+      else this.toast("Browserul a blocat sunetul. Mai apasă o dată.", "error");
     },
 
     async refreshStatus() {
@@ -315,7 +341,7 @@ document.addEventListener("alpine:init", () => {
         a,
         label: ACTION_LABELS[a],
         primary: a === next,
-        cls: a === next ? ACTION_BUTTONS[a] : a === "false-alarm" ? "btn-ghost text-base-content/60 hover:text-error" : "border-line bg-base-100 hover:border-base-content/40",
+        cls: a === next ? ACTION_BUTTONS[a] : a === "false-alarm" ? "btn-ghost text-base-content/75 hover:text-error" : "border-line bg-base-100 hover:border-base-content/40",
       }));
     },
 
@@ -368,24 +394,42 @@ document.addEventListener("alpine:init", () => {
       return { tone: "success", text: "Pistă liberă" };
     },
 
+    // The footer used to list all of this; now the header shows one dot and a menu.
+    get systemRows() {
+      const names = { video: "Video", model: "Detecție", data: "Salvare", calib: "Calibrare" };
+      return Object.keys(names).map((k) => ({ k, name: names[k], ...this.chip(k) }));
+    },
+    get systemIssues() {
+      return this.status ? this.systemRows.filter((r) => r.dot === "bg-error" || r.dot === "bg-warning") : [];
+    },
+    get systemDot() {
+      if (!this.status) return "bg-base-content/30";
+      if (this.systemIssues.some((r) => r.dot === "bg-error")) return "bg-error";
+      return this.systemIssues.length ? "bg-warning" : "bg-success";
+    },
+    get systemLabel() {
+      if (!this.status) return "Se conectează…";
+      const n = this.systemIssues.length;
+      return n ? (n === 1 ? "1 problemă" : `${n} probleme`) : "Sistem OK";
+    },
+
     chip(kind) {
       const s = this.status;
       if (!s) return { dot: "bg-base-content/30", text: "…" };
       if (kind === "video") {
         const v = s.video;
         if (!v.connected) return { dot: "bg-error", text: v.message || "fără semnal" };
-        if (v.using_fallback) return { dot: "bg-warning", text: `REZERVĂ · ${v.label}` };
+        if (v.using_fallback) return { dot: "bg-warning", text: `rezervă: ${v.label}` };
         return { dot: "bg-success", text: v.label };
       }
-      if (kind === "fps") return { dot: s.fps > 8 ? "bg-success" : "bg-warning", text: `${s.fps.toFixed(0)} cadre/s` };
       if (kind === "model") {
         const y = s.yolo;
         const map = {
-          oprit: ["bg-base-content/30", "YOLO oprit"],
-          "se încarcă": ["bg-warning", "YOLO se încarcă…"],
-          încărcat: ["bg-success", `YOLO · ${y.model}`],
-          provizoriu: ["bg-warning", `YOLO provizoriu · ${y.model}`],
-          eroare: ["bg-error", "YOLO indisponibil"],
+          oprit: ["bg-base-content/30", "oprită"],
+          "se încarcă": ["bg-warning", "se încarcă…"],
+          încărcat: ["bg-success", y.model],
+          provizoriu: ["bg-warning", `provizoriu: ${y.model}`],
+          eroare: ["bg-error", "modelul nu pornește"],
         };
         const [dot, text] = map[y.state] || ["bg-base-content/30", y.state];
         return { dot, text };
@@ -395,17 +439,10 @@ document.addEventListener("alpine:init", () => {
         const dot = { conectat: "bg-success", local: "bg-info", oprit: "bg-base-content/30" }[d.state] || "bg-warning";
         return { dot, text: d.label };
       }
-      if (kind === "team") {
-        const n = s.clients.team;
-        return {
-          dot: n ? "bg-success" : "bg-base-content/30",
-          text: n === 1 ? "1 telefon echipă" : `${n} telefoane echipă`,
-        };
-      }
       if (kind === "calib") {
         return s.calibrated
-          ? { dot: "bg-success", text: "pistă calibrată" }
-          : { dot: "bg-warning", text: "pistă necalibrată" };
+          ? { dot: "bg-success", text: "făcută" }
+          : { dot: "bg-warning", text: "lipsește" };
       }
       return { dot: "", text: "" };
     },

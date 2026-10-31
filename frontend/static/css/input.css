@@ -7,35 +7,36 @@
   themes: false;
 }
 
-/* Control tower at night: deep slate, aviation amber for what needs attention, cyan for instruments. */
+/* Cream paper, navy ink, one bright blue for everything the operator can act on.
+   Status colours are dark enough for 4.5:1 text on cream; tints come from color-mix. */
 @plugin "daisyui/theme" {
-  name: "tower";
+  name: "runway";
   default: true;
-  prefersdark: true;
-  color-scheme: dark;
-  --color-base-100: #07090d;
-  --color-base-200: #0d1218;
-  --color-base-300: #1a222c;
-  --color-base-content: #dde4ec;
-  --color-primary: #ffb21e;
-  --color-primary-content: #1c1200;
-  --color-secondary: #3fcdee;
-  --color-secondary-content: #021317;
-  --color-accent: #8b9cff;
-  --color-accent-content: #070a1c;
-  --color-neutral: #18202a;
-  --color-neutral-content: #c9d3de;
-  --color-info: #5aa9ff;
-  --color-info-content: #020d1a;
-  --color-success: #23d18b;
-  --color-success-content: #02150c;
-  --color-warning: #ff8d28;
-  --color-warning-content: #1c0b00;
-  --color-error: #ff4757;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #fffefb;
+  --color-base-200: #f7f3ea;
+  --color-base-300: #ece5d6;
+  --color-base-content: #13203a;
+  --color-primary: #1769ff;
+  --color-primary-content: #ffffff;
+  --color-secondary: #38b6ff;
+  --color-secondary-content: #04223a;
+  --color-accent: #6b4eff;
+  --color-accent-content: #ffffff;
+  --color-neutral: #13203a;
+  --color-neutral-content: #f7f3ea;
+  --color-info: #0b6fc2;
+  --color-info-content: #ffffff;
+  --color-success: #0b8043;
+  --color-success-content: #ffffff;
+  --color-warning: #b8510a;
+  --color-warning-content: #ffffff;
+  --color-error: #dc2638;
   --color-error-content: #ffffff;
-  --radius-selector: 0.375rem;
-  --radius-field: 0.5rem;
-  --radius-box: 0.75rem;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.875rem;
+  --radius-box: 1.5rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;
   --border: 1px;
@@ -44,50 +45,57 @@
 }
 
 @font-face {
-  font-family: "Archivo";
+  font-family: "Atkinson Hyperlegible Next";
   font-style: normal;
   font-display: swap;
-  font-weight: 100 900;
-  src: url("../fonts/archivo-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 200 800;
+  src: url("../fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2") format("woff2-variations");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Archivo";
+  font-family: "Atkinson Hyperlegible Next";
   font-style: normal;
   font-display: swap;
-  font-weight: 100 900;
-  src: url("../fonts/archivo-latin-ext-wght-normal.woff2") format("woff2-variations");
+  font-weight: 200 800;
+  src: url("../fonts/atkinson-hyperlegible-next-latin-ext-wght-normal.woff2") format("woff2-variations");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "JetBrains Mono";
+  font-family: "B612 Mono";
   font-style: normal;
   font-display: swap;
-  font-weight: 100 800;
-  src: url("../fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 400;
+  src: url("../fonts/b612-mono-latin-400-normal.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "JetBrains Mono";
+  font-family: "B612 Mono";
   font-style: normal;
   font-display: swap;
-  font-weight: 100 800;
-  src: url("../fonts/jetbrains-mono-latin-ext-wght-normal.woff2") format("woff2-variations");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  font-weight: 700;
+  src: url("../fonts/b612-mono-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @theme {
-  --font-sans: "Archivo", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
-  --color-line: #222c38;
-  --color-panel: #0d1218;
-  --color-raised: #121922;
+  --font-sans: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "B612 Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --color-line: #ebe3d2;
+  --color-panel: #fffefb;
+  --color-raised: #ffffff;
+  --color-ink: #13203a;
+  /* The brand blue as text: #1769ff is 4.2:1 on cream; one step deeper keeps the hue at 5:1+. */
+  --color-primary-ink: #1257e0;
+  --shadow-card: 0 1px 2px rgb(19 32 58 / 0.04), 0 12px 32px -18px rgb(19 32 58 / 0.22);
+  --shadow-float: 0 2px 6px rgb(19 32 58 / 0.06), 0 22px 48px -20px rgb(19 32 58 / 0.32);
+  --shadow-blue: 0 10px 22px -10px rgb(23 105 255 / 0.65);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
   html,
   body {
-    background-color: var(--color-base-100);
+    background-color: var(--color-base-200);
   }
   body {
     font-feature-settings: "tnum" 1;
@@ -98,11 +106,11 @@
     scrollbar-color: var(--color-base-300) transparent;
   }
   ::selection {
-    background: color-mix(in oklab, var(--color-primary) 35%, transparent);
+    background: color-mix(in oklab, var(--color-primary) 22%, transparent);
     color: var(--color-base-content);
   }
   :focus-visible {
-    outline: 2px solid var(--color-secondary);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
   a.link {
@@ -114,31 +122,46 @@
 }
 
 @layer components {
-  /* ---------- App shell: rail on desktop, tab bar on phones ---------- */
+  /* Pill buttons everywhere; the big phone buttons stay rounded rectangles.
+     daisyUI paints buttons from its own variables, so restyle through those, not through utilities. */
+  .btn {
+    --radius-field: 9999px;
+  }
+  /* Fingers, not cursors: every button is at least 44 px tall on touch screens and below desktop. */
+  @media (pointer: coarse), (width < 64rem) {
+    .btn {
+      min-height: 2.75rem;
+      min-width: 2.75rem;
+    }
+  }
+
+  /* ---------- App shell: floating rail on desktop, floating tab bar on phones ---------- */
   .rail {
-    @apply hidden w-[84px] shrink-0 flex-col items-center gap-1 border-r border-line bg-panel py-3 lg:flex;
+    @apply sticky top-3 m-3 mr-0 hidden h-[calc(100dvh-1.5rem)] w-[92px] shrink-0 flex-col items-center gap-1.5 rounded-box border border-line bg-base-100 py-4 shadow-card lg:flex;
   }
   .rail-link {
-    @apply flex w-[68px] flex-col items-center gap-1 rounded-field py-2.5 text-[0.68rem] font-medium text-base-content/55 transition-colors;
+    @apply flex w-[72px] cursor-pointer flex-col items-center gap-1 rounded-[18px] py-2.5 text-[0.7rem] font-semibold text-base-content/70;
   }
   .rail-link:hover {
-    @apply bg-base-300/60 text-base-content;
+    @apply bg-base-200 text-base-content;
   }
   .rail-link[aria-current="page"] {
-    @apply bg-primary/12 text-primary;
+    @apply bg-primary text-primary-content;
+    box-shadow: var(--shadow-blue);
   }
   .rail-link .icon {
     @apply size-5;
   }
   .tabbar {
-    @apply fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-panel/95 backdrop-blur lg:hidden;
-    padding-bottom: env(safe-area-inset-bottom);
+    @apply fixed inset-x-3 z-40 grid grid-cols-5 gap-1 rounded-[26px] border border-line bg-base-100/95 p-1.5 shadow-float backdrop-blur lg:hidden;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
   .tabbar a {
-    @apply flex flex-col items-center gap-0.5 py-2 text-[0.68rem] font-medium text-base-content/55;
+    @apply flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[20px] py-1.5 text-[0.68rem] font-semibold text-base-content/70;
   }
   .tabbar a[aria-current="page"] {
-    @apply text-primary;
+    @apply bg-primary text-primary-content;
+    box-shadow: var(--shadow-blue);
   }
   .tabbar .icon {
     @apply size-5;
@@ -147,33 +170,35 @@
   .brand {
     @apply flex items-center gap-2.5;
   }
+  /* An eye: blue tile, white iris ring, white pupil. */
   .brand-mark {
-    @apply relative inline-grid size-9 shrink-0 place-items-center rounded-full border border-primary/50;
-    background: radial-gradient(circle, color-mix(in oklab, var(--color-primary) 22%, transparent) 0 30%, transparent 31%);
+    @apply relative inline-grid size-10 shrink-0 place-items-center rounded-[14px] bg-primary;
+    box-shadow: var(--shadow-blue);
   }
   .brand-mark::before {
     content: "";
-    @apply absolute inset-[5px] rounded-full border border-primary/35;
+    @apply absolute inset-[24%] rounded-full border-2 border-white/80;
   }
   .brand-mark::after {
     content: "";
-    @apply size-2 rounded-full bg-primary;
-    box-shadow: 0 0 10px var(--color-primary);
+    @apply size-[22%] rounded-full bg-white;
   }
   .brand-word {
-    @apply text-[0.95rem] font-extrabold tracking-[0.08em];
+    @apply text-[0.95rem] font-extrabold tracking-tight;
   }
 
   /* ---------- Surfaces ---------- */
   .panel {
-    @apply rounded-box border border-line bg-panel;
+    @apply rounded-box border border-line bg-base-100 shadow-card;
   }
   .panel-head {
-    @apply flex min-h-11 items-center justify-between gap-2 border-b border-line px-3.5 py-2;
+    @apply flex min-h-14 items-center justify-between gap-2 px-4 pt-3 pb-2 sm:px-5;
   }
-  .panel-head > h2,
+  .panel-head > h2 {
+    @apply min-w-0 truncate text-[0.95rem] font-bold text-base-content;
+  }
   .eyebrow {
-    @apply min-w-0 truncate font-mono text-[0.68rem] font-semibold tracking-[0.16em] text-base-content/60 uppercase;
+    @apply min-w-0 truncate text-[0.7rem] font-semibold tracking-[0.08em] text-base-content/70 uppercase;
   }
   .readout {
     @apply font-mono tabular-nums;
@@ -186,16 +211,19 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+  .icon-tile {
+    @apply grid size-10 shrink-0 place-items-center rounded-[14px] bg-primary/10 text-primary;
+  }
   .kbd-hint {
-    @apply rounded border border-line px-1 font-mono text-[0.65rem] text-base-content/50;
+    @apply rounded border border-line px-1 font-mono text-[0.65rem] text-base-content/70;
   }
 
   /* ---------- Runway state: the first thing an operator reads ---------- */
   .runway-state {
     --tone: var(--color-success);
-    @apply relative flex min-w-0 items-center gap-3 overflow-hidden rounded-box border px-3 py-1.5 sm:px-4;
-    border-color: color-mix(in oklab, var(--tone) 45%, transparent);
-    background: linear-gradient(90deg, color-mix(in oklab, var(--tone) 18%, transparent), color-mix(in oklab, var(--tone) 4%, transparent));
+    @apply relative flex min-w-0 items-center gap-3 overflow-hidden rounded-full border py-1.5 pr-2 pl-3 shadow-card sm:pl-4;
+    border-color: color-mix(in oklab, var(--tone) 30%, var(--color-line));
+    background: color-mix(in oklab, var(--tone) 9%, var(--color-base-100));
     transition:
       background 250ms,
       border-color 250ms;
@@ -208,24 +236,23 @@
   }
   .runway-state[data-tone="error"] {
     --tone: var(--color-error);
-    background: linear-gradient(90deg, var(--color-error), color-mix(in oklab, var(--color-error) 55%, var(--color-base-100)));
+    background: var(--color-error);
     border-color: var(--color-error);
     color: #fff;
+    box-shadow: 0 12px 28px -12px rgb(220 38 56 / 0.7);
   }
   .runway-state-light {
     @apply relative size-3 shrink-0 rounded-full;
     background: var(--tone);
-    box-shadow: 0 0 0 4px color-mix(in oklab, var(--tone) 25%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--tone) 20%, transparent);
   }
   .runway-state[data-tone="error"] .runway-state-light {
     background: #fff;
+    box-shadow: 0 0 0 4px rgb(255 255 255 / 0.3);
     animation: light-blink 0.9s steps(2, start) infinite;
   }
-  .runway-state-label {
-    @apply font-mono text-[0.62rem] tracking-[0.18em] uppercase opacity-70;
-  }
   .runway-state-text {
-    @apply truncate text-base font-bold leading-tight sm:text-lg;
+    @apply truncate text-base leading-tight font-extrabold sm:text-lg;
     color: var(--tone);
   }
   .runway-state[data-tone="error"] .runway-state-text {
@@ -234,10 +261,10 @@
 
   /* ---------- Video monitor ---------- */
   .monitor {
-    @apply relative overflow-hidden bg-black;
+    @apply relative overflow-hidden bg-[#0d1626];
   }
   .monitor-corner {
-    @apply pointer-events-none absolute z-[2] size-6 border-secondary/70;
+    @apply pointer-events-none absolute z-[2] size-6 rounded-[4px] border-white/60;
   }
   .hud {
     @apply pointer-events-none absolute z-[3] flex items-center gap-2;
@@ -246,7 +273,7 @@
     @apply pointer-events-auto;
   }
   .hud-chip {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 font-mono text-[0.68rem] font-medium text-white/85 backdrop-blur;
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[0.7rem] font-bold text-base-content shadow-sm backdrop-blur;
   }
   .live-dot {
     @apply size-2 rounded-full bg-error;
@@ -262,14 +289,14 @@
     --tone: var(--color-error);
   }
   .map-marker[data-tone="warning"] {
-    --tone: var(--color-warning);
+    --tone: #f08a24;
   }
   .map-marker-dot {
     @apply absolute inset-[5px] rounded-full;
     background: var(--tone);
     box-shadow:
-      0 0 0 2px #0b0f14,
-      0 0 12px var(--tone);
+      0 0 0 2.5px #fff,
+      0 4px 10px rgb(0 0 0 / 0.35);
     transition: transform 150ms;
   }
   .map-marker-ping {
@@ -285,36 +312,35 @@
   /* ---------- Incident cards ---------- */
   .incident {
     --tone: var(--color-info);
-    @apply relative overflow-hidden rounded-box border border-line bg-raised p-3 pl-4;
+    @apply relative rounded-[20px] border border-line bg-base-100 p-3.5 shadow-card;
     transition:
       border-color 150ms,
-      transform 150ms;
-  }
-  .incident::before {
-    content: "";
-    @apply absolute inset-y-0 left-0 w-1;
-    background: var(--tone);
+      box-shadow 150ms;
   }
   .incident[data-tone="error"] {
     --tone: var(--color-error);
-    border-color: color-mix(in oklab, var(--color-error) 40%, var(--color-line));
-    background: linear-gradient(180deg, color-mix(in oklab, var(--color-error) 9%, var(--color-raised)), var(--color-raised) 60%);
+    border-color: color-mix(in oklab, var(--color-error) 35%, var(--color-line));
+    background: linear-gradient(180deg, color-mix(in oklab, var(--color-error) 7%, var(--color-base-100)), var(--color-base-100) 70%);
   }
   .incident[data-tone="warning"] {
     --tone: var(--color-warning);
+    border-color: color-mix(in oklab, var(--color-warning) 22%, var(--color-line));
   }
   .incident[data-hl="true"] {
-    border-color: var(--color-secondary);
+    border-color: var(--color-primary);
+    box-shadow:
+      0 0 0 3px color-mix(in oklab, var(--color-primary) 18%, transparent),
+      var(--shadow-card);
   }
   .incident-new {
     animation: card-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   .risk-tag {
     --tone: var(--color-info);
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[0.65rem] font-bold tracking-[0.12em] uppercase;
-    color: var(--tone);
-    background: color-mix(in oklab, var(--tone) 16%, transparent);
-    border: 1px solid color-mix(in oklab, var(--tone) 40%, transparent);
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.68rem] font-bold tracking-[0.06em] whitespace-nowrap uppercase;
+    /* The tone deepened with ink: 4.5:1 on its own 12% tint. */
+    color: color-mix(in oklab, var(--tone) 72%, var(--color-ink));
+    background: color-mix(in oklab, var(--tone) 12%, transparent);
   }
   .risk-tag[data-tone="error"] {
     --tone: var(--color-error);
@@ -322,38 +348,65 @@
   .risk-tag[data-tone="warning"] {
     --tone: var(--color-warning);
   }
-  .sector-code {
-    @apply font-mono text-2xl leading-none font-bold text-primary;
-  }
-
   /* Detected → confirmed → team → removed */
   .flow {
-    @apply grid grid-cols-4 gap-1;
+    @apply grid grid-cols-4 gap-1.5;
   }
   .flow-step {
-    @apply flex flex-col gap-1 text-[0.62rem] font-medium text-base-content/40;
+    @apply flex flex-col gap-1 text-[0.65rem] font-semibold text-base-content/65;
   }
   .flow-step::before {
     content: "";
-    @apply h-1 rounded-full bg-base-300;
+    @apply h-1.5 rounded-full bg-base-300;
   }
   .flow-step[data-state="done"] {
     @apply text-base-content/70;
   }
   .flow-step[data-state="done"]::before {
-    @apply bg-secondary/70;
+    @apply bg-primary/45;
   }
   .flow-step[data-state="now"] {
-    @apply text-primary;
+    @apply text-primary-ink;
   }
   .flow-step[data-state="now"]::before {
     @apply bg-primary;
     animation: light-blink 1.4s ease-in-out infinite;
   }
 
+  /* ---------- Airfield signs (ICAO Annex 14) ----------
+     Location sign: yellow on black, where something is. Mandatory sign: white on red, the runway itself. */
+  .sign-location {
+    @apply inline-grid min-w-[2.6em] place-items-center rounded-[6px] px-[0.45em] py-[0.12em] font-mono font-bold leading-none tracking-wide;
+    color: #ffd21f;
+    background: #14161a;
+    box-shadow:
+      inset 0 0 0 2px #ffd21f,
+      inset 0 0 0 3.5px #14161a,
+      0 2px 6px rgb(0 0 0 / 0.18);
+  }
+  .sign-mandatory {
+    @apply inline-flex items-center rounded-[6px] px-[0.5em] py-[0.15em] font-mono font-bold leading-none tracking-wide text-white;
+    background: #c8102e;
+    box-shadow:
+      inset 0 0 0 1.5px #fff,
+      inset 0 0 0 3px #c8102e,
+      0 2px 6px rgb(200 16 46 / 0.25);
+  }
+
+  /* ---------- Segmented tabs ---------- */
+  .seg {
+    @apply min-h-9 cursor-pointer rounded-full px-2 text-xs font-semibold text-base-content/70;
+  }
+  .seg:hover {
+    @apply text-base-content;
+  }
+  .seg[aria-selected="true"] {
+    @apply bg-base-100 text-base-content shadow-card;
+  }
+
   /* ---------- System status ---------- */
   .status-chip {
-    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-base-100 px-2.5 py-1 text-xs whitespace-nowrap text-base-content/75;
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-base-100 px-3 py-1.5 text-xs font-medium whitespace-nowrap text-base-content/75;
   }
   .status-dot {
     @apply inline-block size-2 shrink-0 rounded-full;
@@ -361,85 +414,155 @@
 
   /* ---------- Overlays ---------- */
   .alarm-banner {
-    @apply flex w-full max-w-3xl items-center gap-4 rounded-box border-2 border-white/80 bg-error p-3 text-left text-error-content sm:px-5 sm:py-4;
-    box-shadow: 0 24px 60px -12px rgb(0 0 0 / 0.8);
+    @apply flex w-full max-w-3xl cursor-pointer items-center gap-4 rounded-box border-4 border-white bg-error p-3 text-left text-error-content sm:px-5 sm:py-4;
+    box-shadow: 0 30px 70px -18px rgb(220 38 56 / 0.75);
   }
   .modal-backdrop-custom {
-    @apply fixed inset-0 z-50 flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-6;
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6;
   }
   .sheet {
-    @apply max-h-[92dvh] w-full overflow-y-auto rounded-t-box border border-line bg-panel sm:rounded-box;
+    @apply max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] border border-line bg-base-100 shadow-float sm:rounded-box;
   }
   .toast-item {
-    @apply max-w-sm rounded-box border border-line bg-base-200 px-4 py-2.5 text-sm;
-    box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.7);
+    @apply max-w-sm rounded-[16px] bg-ink px-4 py-3 text-sm font-medium text-white;
+    box-shadow: var(--shadow-float);
   }
   .toast-item[data-kind="error"] {
-    @apply border-error text-error;
-    background: color-mix(in oklab, var(--color-error) 15%, var(--color-base-200));
+    @apply bg-error text-error-content;
   }
 
   /* ---------- KPI tiles (history) ---------- */
   .kpi {
-    @apply flex flex-col gap-0.5 rounded-box border border-line bg-panel px-3 py-2 sm:gap-1 sm:px-4 sm:py-3;
+    @apply flex flex-col gap-1 rounded-box border border-line bg-base-100 px-4 py-3 shadow-card sm:px-5 sm:py-4;
   }
   .kpi dt {
-    @apply font-mono text-[0.65rem] tracking-[0.14em] text-base-content/55 uppercase;
+    @apply text-xs font-semibold text-base-content/70;
   }
   .kpi dd {
-    @apply font-mono text-xl font-semibold tabular-nums sm:text-2xl;
+    @apply text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl;
+  }
+  .kpi-hero {
+    @apply border-primary bg-primary text-primary-content;
+    box-shadow: var(--shadow-blue);
+  }
+  .kpi-hero dt {
+    @apply text-primary-content;
   }
 
   /* ---------- Team phone ---------- */
   .radar {
-    @apply relative aspect-square w-56 rounded-full border border-success/30;
+    @apply relative aspect-square w-56 rounded-full border border-success/25;
     background:
-      radial-gradient(circle, transparent 0 32%, color-mix(in oklab, var(--color-success) 22%, transparent) 32.5% 33%, transparent 33.5% 65%, color-mix(in oklab, var(--color-success) 22%, transparent) 65.5% 66%, transparent 66.5%),
-      radial-gradient(circle, color-mix(in oklab, var(--color-success) 10%, transparent), transparent 70%);
+      radial-gradient(circle, transparent 0 32%, color-mix(in oklab, var(--color-success) 18%, transparent) 32.5% 33%, transparent 33.5% 65%, color-mix(in oklab, var(--color-success) 18%, transparent) 65.5% 66%, transparent 66.5%),
+      radial-gradient(circle, color-mix(in oklab, var(--color-success) 8%, var(--color-base-100)), var(--color-base-100) 70%);
+    box-shadow: var(--shadow-card);
   }
   .radar::before {
     content: "";
     @apply absolute inset-0 rounded-full;
-    background: conic-gradient(from 0deg, color-mix(in oklab, var(--color-success) 55%, transparent), transparent 22%);
+    background: conic-gradient(from 0deg, color-mix(in oklab, var(--color-success) 35%, transparent), transparent 22%);
     animation: radar-sweep 3.2s linear infinite;
   }
   .radar::after {
     content: "";
-    @apply absolute top-1/2 left-1/2 size-2.5 -translate-1/2 rounded-full bg-success;
-    box-shadow: 0 0 12px var(--color-success);
+    @apply absolute top-1/2 left-1/2 size-3 -translate-1/2 rounded-full bg-success;
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--color-success) 20%, transparent);
   }
   .radar[data-tone="primary"] {
-    @apply border-primary/30;
-    background: radial-gradient(circle, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 70%);
+    @apply border-primary/25;
+    background:
+      radial-gradient(circle, transparent 0 32%, color-mix(in oklab, var(--color-primary) 16%, transparent) 32.5% 33%, transparent 33.5% 65%, color-mix(in oklab, var(--color-primary) 16%, transparent) 65.5% 66%, transparent 66.5%),
+      radial-gradient(circle, color-mix(in oklab, var(--color-primary) 8%, var(--color-base-100)), var(--color-base-100) 70%);
   }
   .radar[data-tone="primary"]::before {
-    background: conic-gradient(from 0deg, color-mix(in oklab, var(--color-primary) 55%, transparent), transparent 22%);
+    background: conic-gradient(from 0deg, color-mix(in oklab, var(--color-primary) 35%, transparent), transparent 22%);
   }
   .radar[data-tone="primary"]::after {
     @apply bg-primary;
-    box-shadow: 0 0 12px var(--color-primary);
+    box-shadow: 0 0 0 5px color-mix(in oklab, var(--color-primary) 20%, transparent);
   }
   .big-action {
-    @apply btn h-auto min-h-20 rounded-box text-2xl font-bold;
+    @apply btn h-auto min-h-20 text-2xl font-extrabold;
+    --radius-field: 28px;
+  }
+}
+
+/* daisyUI sets its button variables in a later layer, so these overrides live outside the layers. */
+.btn-primary:not(:disabled) {
+  --btn-shadow: var(--shadow-blue);
+}
+/* White pill used for secondary header actions. */
+.btn-pill {
+  --btn-bg: var(--color-base-100);
+  --btn-border: var(--color-line);
+  --btn-shadow: var(--shadow-card);
+}
+.btn-pill:hover {
+  --btn-bg: #fff;
+  --btn-border: color-mix(in oklab, var(--color-base-content) 22%, transparent);
+}
+
+/* Motion. Outside the layers so daisyUI's own button transitions don't win:
+   one easing for every control, colours and shadows fade, presses compress a little. */
+.btn,
+.rail-link,
+.tabbar a,
+.menu li > :is(a, button),
+.seg,
+.status-chip,
+.sys-row {
+  transition-property: color, background-color, border-color, box-shadow, opacity, scale, translate;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+.btn:not(:disabled):active,
+.rail-link:active,
+.tabbar a:active {
+  scale: 0.97;
+  translate: 0 0;
+  transition-duration: 90ms;
+}
+.btn-primary:not(:disabled):hover {
+  --btn-bg: color-mix(in oklab, var(--color-primary) 90%, #000);
+  --btn-shadow: 0 14px 26px -12px rgb(23 105 255 / 0.8);
+}
+.sheet {
+  animation: sheet-in 260ms var(--ease-out-soft);
+}
+.modal-backdrop-custom {
+  animation: fade-in 200ms var(--ease-out-soft);
+}
+.dropdown-content {
+  transition-timing-function: var(--ease-out-soft);
+  transition-duration: 180ms;
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+    scale: 0.985;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 }
 
 .bg-grid {
-  background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: radial-gradient(rgb(19 32 58 / 0.09) 1px, transparent 1.6px);
+  background-size: 22px 22px;
 }
 
 @keyframes alert-pulse {
   0%,
   100% {
-    background-color: rgb(255 71 87 / 0.06);
-    box-shadow: inset 0 0 0 4px rgb(255 71 87 / 0.6);
+    background-color: rgb(220 38 56 / 0.04);
+    box-shadow: inset 0 0 0 4px rgb(220 38 56 / 0.55);
   }
   50% {
-    background-color: rgb(255 71 87 / 0.3);
-    box-shadow: inset 0 0 0 14px rgb(255 71 87 / 0.95);
+    background-color: rgb(220 38 56 / 0.16);
+    box-shadow: inset 0 0 0 14px rgb(220 38 56 / 0.9);
   }
 }
 .alert-overlay {
@@ -449,14 +572,19 @@
 @keyframes sector-blink {
   0%,
   100% {
-    fill: rgb(255 71 87 / 0.12);
+    fill: rgb(220 38 56 / 0.15);
   }
   50% {
-    fill: rgb(255 71 87 / 0.7);
+    fill: rgb(220 38 56 / 0.75);
   }
 }
 .sector-alert {
   animation: sector-blink 0.6s ease-in-out infinite;
+}
+
+/* Calibration diagram: the corner to tap next breathes. */
+.corner-next circle {
+  animation: light-blink 1.4s ease-in-out infinite;
 }
 
 @keyframes marker-ping {
@@ -496,7 +624,7 @@
 @keyframes phone-alarm {
   0%,
   100% {
-    background-color: #6e0f19;
+    background-color: #9b1424;
   }
   50% {
     background-color: #e3283a;
@@ -512,12 +640,27 @@
   .map-marker-ping,
   .phone-alarm,
   .live-dot,
+  .corner-next circle,
   .flow-step[data-state="now"]::before,
   .runway-state-light {
     animation-duration: 2.4s;
   }
   .radar::before,
-  .incident-new {
+  .incident-new,
+  .sheet,
+  .modal-backdrop-custom {
     animation: none;
   }
+  .btn:not(:disabled):active,
+  .rail-link:active,
+  .tabbar a:active {
+    scale: none;
+  }
+}
+
+/* Unlayered on purpose, so it wins over the generated utility: blue *text* takes the deeper step
+   (buttons, the rail and filled surfaces keep #1769ff). */
+.text-primary,
+.link-primary {
+  color: var(--color-primary-ink);
 }

@@ -7,9 +7,9 @@
 {% if r.sent is defined %}
 <div role="status" class="alert {{ 'alert-error' if r.sent else 'alert-info' }} mb-4">
   {% if r.sent %}
-  <span><b>{{ r.sent }} {{ "incident trimis" if r.sent == 1 else "incidente trimise" }}</b>: alertă pe panou și pe telefonul echipei, salvat în istoric și în Supabase. <a href="/incidents" class="link">Istoric</a></span>
+  <span><b>{{ r.sent }} {{ "incident trimis" if r.sent == 1 else "incidente trimise" }}</b>: alarma a pornit, iar incidentul e în istoric. <a href="/incidents" class="link">Istoric</a></span>
   {% else %}
-  <span>Nicio detecție, deci nicio alertă trimisă.</span>
+  <span>Nimic detectat, nicio alertă trimisă.</span>
   {% endif %}
 </div>
 {% endif %}
@@ -17,7 +17,7 @@
   <div class="panel overflow-hidden">
     <div class="panel-head">
       <h2>{{ r.filename }}</h2>
-      <span class="readout text-xs text-base-content/60">{{ r.kind }}{% if r.seconds %} · {{ r.seconds }} s · {{ r.frames }} cadre{% endif %}{% if r.truncated %} · doar începutul{% endif %}</span>
+      <span class="readout text-xs text-base-content/70">{{ r.kind }}{% if r.seconds %} · {{ r.seconds }} s · {{ r.frames }} cadre{% endif %}{% if r.truncated %} · doar începutul{% endif %}</span>
     </div>
     <img src="{{ r.image }}" alt="Rezultatul detecției" class="w-full bg-black">
   </div>
@@ -30,9 +30,9 @@
         {% if row.crop %}<img src="{{ row.crop }}" alt="" class="size-14 rounded-field object-cover">{% endif %}
         <div class="min-w-0 flex-1">
           <p class="font-semibold first-letter:uppercase">{{ row.object_class }}</p>
-          <p class="text-xs text-base-content/55">
+          <p class="text-xs text-base-content/70">
             {{ (row.confidence * 100) | round | int }}%
-            {% if row.sector %} · Sector <span class="readout text-primary">{{ row.sector }}</span>{% endif %}
+            {% if row.sector %} · <span class="sign-location text-[0.7rem]">{{ row.sector }}</span>{% endif %}
             {% if row.time_s is not none %} · la {{ row.time_s }} s{% endif %}
           </p>
         </div>
@@ -41,7 +41,7 @@
       {% endfor %}
     </ul>
     {% else %}
-    <p class="p-8 text-center text-sm text-base-content/50">Niciun obiect detectat.</p>
+    <p class="p-8 text-center text-sm text-base-content/70">Niciun obiect detectat.</p>
     {% endif %}
   </div>
 </div>

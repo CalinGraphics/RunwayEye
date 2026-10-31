@@ -14,7 +14,7 @@
   <div class="kpi"><dt>Deschise</dt><dd class="{{ 'text-error' if summary.open }}">{{ summary.open }}</dd></div>
   <div class="kpi"><dt>Critice</dt><dd class="{{ 'text-error' if summary.critical }}">{{ summary.critical }}</dd></div>
   <div class="kpi"><dt>Alarme false</dt><dd>{{ summary.false_alarms }}</dd></div>
-  <div class="kpi col-span-2 sm:col-span-1"><dt>Timp mediu până la eliminare</dt><dd class="text-primary">{{ summary.avg_resolve or "—" }}</dd></div>
+  <div class="kpi kpi-hero col-span-2 sm:col-span-1"><dt>Timp mediu până la eliminare</dt><dd>{{ summary.avg_resolve or "—" }}</dd></div>
 </dl>
 
 <div class="panel overflow-hidden">
@@ -27,7 +27,7 @@
   <div class="hidden overflow-x-auto md:block">
   <table class="table table-sm">
     <thead>
-      <tr class="font-mono text-[0.65rem] tracking-[0.12em] text-base-content/50 uppercase">
+      <tr class="text-xs font-semibold text-base-content/70">
         <th><span class="sr-only">Poză</span></th><th>Detectat</th><th>Obiect</th><th>Risc</th><th>Sector</th><th>Poziție</th><th>Stare</th><th>Echipa a preluat</th><th>Până la închidere</th>
       </tr>
     </thead>
@@ -39,10 +39,10 @@
         <td class="readout whitespace-nowrap text-base-content/80">{{ inc.detected_at | datetime }}</td>
         <td>
           <div class="font-semibold first-letter:uppercase">{{ inc.object_class }}</div>
-          <div class="text-xs text-base-content/50">{{ source_label[inc.source] }} · {{ (inc.confidence * 100) | round | int }}%{% if inc.fake %} · demo{% endif %}</div>
+          <div class="text-xs text-base-content/70">{{ source_label[inc.source] }} · {{ (inc.confidence * 100) | round | int }}%{% if inc.fake %} · demo{% endif %}</div>
         </td>
         <td>{{ risk(inc) }}</td>
-        <td class="{{ 'readout font-bold text-primary' if inc.sector else 'text-base-content/40' }}">{{ inc.sector or "—" }}</td>
+        <td>{% if inc.sector %}<span class="sign-location text-sm">{{ inc.sector }}</span>{% else %}<span class="text-base-content/50">—</span>{% endif %}</td>
         <td class="readout whitespace-nowrap text-xs text-base-content/70">
           {% if inc.runway_distance_m is not none %}{{ inc.runway_distance_m | round | int }} m · {{ "%+.0f" | format(inc.centerline_offset_m) }} m{% else %}—{% endif %}
         </td>
@@ -66,11 +66,11 @@
             <span class="truncate font-semibold first-letter:uppercase">{{ inc.object_class }}</span>
             {{ risk(inc) }}
           </span>
-          <span class="flex items-center gap-2 text-xs text-base-content/60">
+          <span class="flex items-center gap-2 text-xs text-base-content/70">
             <span class="readout">{{ inc.detected_at | datetime }}</span>
-            <span class="{{ 'readout font-bold text-primary' if inc.sector else '' }}">{{ ('Sector ' ~ inc.sector) if inc.sector else "fără sector" }}</span>
+            {% if inc.sector %}<span class="sign-location text-xs">{{ inc.sector }}</span>{% else %}<span>fără sector</span>{% endif %}
           </span>
-          <span class="flex items-center gap-2 text-xs text-base-content/60">
+          <span class="flex items-center gap-2 text-xs text-base-content/70">
             {{ status_pill(inc) }}
             {% if inc.closed_at %}<span>închis în <span class="readout">{{ duration(inc.detected_at, inc.closed_at) }}</span></span>{% endif %}
           </span>
@@ -84,6 +84,6 @@
 <div class="panel flex flex-col items-center gap-2 p-12 text-center">
   {{ icon("check", "size-10 text-success/70") }}
   <p class="font-semibold">Niciun incident pentru filtrele alese.</p>
-  <p class="text-sm text-base-content/60">Încearcă perioada „Tot” sau șterge filtrul de sector.</p>
+  <p class="text-sm text-base-content/70">Încearcă perioada „Tot” sau șterge filtrul de sector.</p>
 </div>
 {% endif %}

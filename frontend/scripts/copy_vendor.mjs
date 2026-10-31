@@ -1,5 +1,3 @@
-// Copies HTMX, Alpine.js and the fonts from node_modules into frontend/static/,
-// so the pages never depend on a CDN (the demo must work offline).
 import { copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,10 +18,14 @@ for (const [src, dest] of files) {
 
 const fontDir = join(root, "static", "fonts");
 mkdirSync(fontDir, { recursive: true });
-for (const [pkg, name] of [["archivo", "archivo"], ["jetbrains-mono", "jetbrains-mono"]]) {
-  for (const subset of ["latin", "latin-ext"]) {
-    const file = `${name}-${subset}-wght-normal.woff2`;
-    copyFileSync(join(root, "node_modules", "@fontsource-variable", pkg, "files", file), join(fontDir, file));
-    console.log(`font: ${file}`);
-  }
+// Atkinson Hyperlegible Next for text; B612 Mono (designed for Airbus cockpit displays) for readouts.
+const fonts = [
+  ["@fontsource-variable/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-wght-normal.woff2"],
+  ["@fontsource-variable/atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-ext-wght-normal.woff2"],
+  ["@fontsource/b612-mono", "b612-mono-latin-400-normal.woff2"],
+  ["@fontsource/b612-mono", "b612-mono-latin-700-normal.woff2"],
+];
+for (const [pkg, file] of fonts) {
+  copyFileSync(join(root, "node_modules", pkg, "files", file), join(fontDir, file));
+  console.log(`font: ${file}`);
 }

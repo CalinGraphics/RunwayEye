@@ -294,3 +294,19 @@ def test_unsure_yolo_box_on_a_real_change_still_names_the_object():
     engine.set_yolo(yolo)
     [found] = incidents(run(engine, [scene.frame([BOLT]) for _ in range(10)]))
     assert found.detection.source == "both" and found.detection.class_key == "bolt"
+
+
+def test_clip_starts_over_after_the_models_load(tmp_path):
+    # The clean runway is learned from the clip's first seconds, not from wherever it had got to
+    # while the models were loading (a hand placing an object would end up in the reference).
+    from app.vision.capture import FrameSource
+
+    clip = tmp_path / "pista.mp4"
+    clip.write_bytes(b"")
+    src = FrameSource(str(clip), "", 640, 480, 640)
+    src.rewind()
+    assert src._pending is not None and src._pending.raw == str(clip)
+
+    camera = FrameSource("0", "", 640, 480, 640)
+    camera.rewind()
+    assert camera._pending is None  # a live camera has nothing to rewind

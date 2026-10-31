@@ -2,15 +2,12 @@
 {% block body %}
 <div class="flex min-h-dvh">
   {% include "partials/nav.html" %}
-  <div class="min-w-0 flex-1 pb-20 lg:pb-0">
-    <header class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-panel/60 px-4 py-3 sm:px-6">
+  <div class="min-w-0 flex-1 pb-28 lg:pb-0">
+    <header class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-5 pb-2 sm:px-8 sm:pt-7">
       <a href="/" class="brand lg:hidden" aria-label="RunwayEye, panoul de comandă">
         <span class="brand-mark size-8" aria-hidden="true"></span>
       </a>
-      <div class="min-w-0">
-        <p class="eyebrow">RunwayEye · pista {{ settings.runway_name }}</p>
-        <h1 class="truncate text-xl font-bold sm:text-2xl">{% block page_title %}{% endblock %}</h1>
-      </div>
+      <h1 class="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-[2rem]">{% block page_title %}{% endblock %}</h1>
       <div class="ml-auto flex flex-wrap items-center gap-2">{% block page_actions %}{% endblock %}</div>
     </header>
     {% block content %}{% endblock %}

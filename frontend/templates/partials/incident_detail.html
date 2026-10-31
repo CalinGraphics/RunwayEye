@@ -16,9 +16,9 @@
       {% set sev = inc.severity_info() %}
       {% if sev %}
       <div class="rounded-field border border-line bg-base-100 px-3 py-2.5 text-sm">
-        <p class="font-semibold">Severitate {{ sev.nivel }}/5 · {{ sev.nume }} <span class="font-normal text-base-content/60">· eliminare în cel mult {{ sev.timp_maxim_min }} min</span></p>
+        <p class="font-semibold">Severitate {{ sev.nivel }}/5 · {{ sev.nume }} <span class="font-normal text-base-content/70">· eliminare în cel mult {{ sev.timp_maxim_min }} min</span></p>
         <p class="mt-1 text-base-content/75">{{ sev.motiv }}</p>
-        <p class="mt-1 text-base-content/60">Pericole: {{ sev.pericole | join(" · ") }}</p>
+        <p class="mt-1 text-base-content/70">Pericole: {{ sev.pericole | join(" · ") }}</p>
         <p class="mt-1 font-semibold text-primary">{{ sev.actiune }}</p>
       </div>
       {% endif %}
@@ -26,7 +26,7 @@
       <p class="flex gap-2 rounded-field border border-accent/30 bg-accent/8 px-3 py-2 text-sm text-base-content/80">{{ icon("sparkle", "mt-0.5 text-accent") }}<span>{{ inc.ai_description }}</span></p>
       {% endif %}
       <dl class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div><dt class="eyebrow">Sector</dt><dd class="readout text-xl font-bold text-primary">{{ inc.sector or "—" }}</dd></div>
+        <div><dt class="eyebrow">Sector</dt><dd class="mt-1 text-xl">{% if inc.sector %}<span class="sign-location">{{ inc.sector }}</span>{% else %}<span class="font-semibold text-base-content/50">—</span>{% endif %}</dd></div>
         <div><dt class="eyebrow">De la prag 09</dt><dd class="readout text-xl font-semibold">{{ (inc.runway_distance_m | round | int ~ " m") if inc.runway_distance_m is not none else "—" }}</dd></div>
         <div><dt class="eyebrow">Față de ax</dt><dd class="readout text-xl font-semibold">{{ ("%+.0f m" | format(inc.centerline_offset_m)) if inc.centerline_offset_m is not none else "—" }}</dd></div>
         <div><dt class="eyebrow">Mărime</dt><dd class="readout text-xl font-semibold">{{ ("~" ~ (inc.size_estimate_cm | round(1)) ~ " cm") if inc.size_estimate_cm is not none else "—" }}</dd></div>
@@ -45,15 +45,15 @@
     {% endif %}
 
     <div>
-      <p class="eyebrow mb-3">Cronologie</p>
+      <h3 class="mb-3 text-[0.95rem] font-bold">Cronologie</h3>
       <ol class="relative space-y-3 border-l border-line pl-5" aria-label="Cronologia incidentului">
         {% for e in events %}
         <li class="flex flex-wrap items-baseline gap-x-2">
           <span class="absolute -left-[6px] mt-1.5 size-3 rounded-full border-2 border-panel {{ 'bg-success' if e.action == 'resolve' else 'bg-error' if e.action == 'detected' else 'bg-accent' if e.action == 'ai_description' else 'bg-primary' }}"></span>
           <span class="readout text-sm text-primary">{{ e.at | time }}</span>
           <span class="text-sm font-medium">{{ e.label }}</span>
-          {% if e.offset and e.action != 'detected' %}<span class="readout text-xs text-base-content/50">+{{ e.offset }}</span>{% endif %}
-          {% if e.note %}<span class="w-full text-xs text-base-content/55">{{ e.note }}</span>{% endif %}
+          {% if e.offset and e.action != 'detected' %}<span class="readout text-xs text-base-content/70">+{{ e.offset }}</span>{% endif %}
+          {% if e.note %}<span class="w-full text-xs text-base-content/70">{{ e.note }}</span>{% endif %}
         </li>
         {% endfor %}
       </ol>

@@ -5,7 +5,7 @@
   {% for href, label, key, ic in links %}
   <a href="{{ href }}" class="rail-link" {% if active == key %}aria-current="page"{% endif %}>{{ icon(ic) }}<span>{{ label }}</span></a>
   {% endfor %}
-  <span class="mt-auto font-mono text-[0.62rem] text-base-content/40">{{ settings.runway_name }}</span>
+  <span class="sign-mandatory mt-auto text-[0.7rem]" title="Pista {{ settings.runway_name }}">{{ settings.runway_name | replace("/", "-") }}</span>
 </nav>
 <nav class="tabbar" aria-label="Navigare">
   {% for href, label, key, ic in links %}

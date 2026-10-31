@@ -1,10 +1,7 @@
-"""Detection engine: change detection + YOLO + fusion + persistence + deduplication.
-
-Pure frame-in / events-out logic, without threads or HTTP, so it can be tested
+"""Pure frame-in / events-out logic, without threads or HTTP, so it can be tested
 on synthetic frames and reused for uploaded clips and `evaluate.py`.
 Calls from other threads (reset, calibration, closing incidents) are queued and
-applied at the start of the next `process()`.
-"""
+applied at the start of the next `process()`."""
 
 import base64
 import math
