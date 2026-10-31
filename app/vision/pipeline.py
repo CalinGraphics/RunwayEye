@@ -15,7 +15,8 @@ from app.config import Settings
 from app.vision.annotate import annotate, encode_jpeg, placeholder_frame
 from app.vision.calibration import Calibration, RunwayGeometry
 from app.vision.capture import FrameSource
-from app.vision.engine import DetectionEngine, EngineParams
+from app.vision.engine import DetectionEngine, EngineParams, IgnoredZones
+from app.vision.types import BBox
 
 log = logging.getLogger(__name__)
 
@@ -111,6 +112,25 @@ class VisionService:
     def close_incident(self, incident_id: str, absorb: bool) -> None:
         self.engine.close_incident(incident_id, absorb)
 
+    def _load_ignored(self) -> None:
+        try:
+            zones = json.loads(self.s.ignored_zones_file.read_text(encoding="utf-8"))
+            self.engine.set_ignored([BBox(**z) for z in zones])
+        except (OSError, ValueError, TypeError):
+            pass
+
+    def _save_ignored(self, zones: list[BBox]) -> None:
+        try:
+            self.s.ignored_zones_file.parent.mkdir(parents=True, exist_ok=True)
+            self.s.ignored_zones_file.write_text(json.dumps([z.model_dump() for z in zones]), encoding="utf-8")
+        except OSError:
+            log.warning("Could not save the ignored zones")
+
+    def clear_ignored(self) -> None:
+        """The camera view changed (new calibration): the dismissed spots no longer match."""
+        self.engine.set_ignored([])
+        self.s.ignored_zones_file.unlink(missing_ok=True)
+
     def set_calibration(self, cal: Calibration | None) -> None:
         self.calibration = cal
         self.engine.set_calibration(cal)
@@ -140,14 +160,9 @@ class VisionService:
         if not self.s.enable_yolo:
             return
         try:
-            from app.vision.yolo_detector import YoloDetector
+            from app.vision.yolo_detector import build_detector
 
-            det = YoloDetector(
-                self.s.path(self.s.yolo_model_path),
-                self.s.path(self.s.yolo_fallback_model) if self.s.yolo_fallback_model else None,
-                conf=self.engine.params.yolo_conf,
-                imgsz=self.s.yolo_imgsz,
-            )
+            det = build_detector(self.s, conf=self.engine.params.yolo_conf)
         except Exception as exc:
             det = None
             self.yolo_error = str(exc)
@@ -171,6 +186,7 @@ class VisionService:
 
     def _run(self) -> None:
         # YOLO loads in this thread (it takes seconds), so the server starts instantly.
+        self._load_ignored()
         self._load_yolo()
         last_seq = 0
         last_frame_at = time.monotonic()
@@ -213,6 +229,9 @@ class VisionService:
             self._raw = frame
             self._seq += 1
         for ev in result.events:
+            if isinstance(ev, IgnoredZones):
+                self._save_ignored(ev.zones)
+                continue
             try:
                 self.on_event(ev, jpeg)
             except Exception:

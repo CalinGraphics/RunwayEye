@@ -40,7 +40,8 @@ def _analyse_image(request: Request, data: bytes) -> dict:
     frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if frame is None:
         return {"error": "Imaginea nu a putut fi citită"}
-    frame = resize_to_width(frame, s.frame_width)
+    if frame.shape[1] > s.frame_width:  # a small photo is not blown up: YOLO sees it as it was taken
+        frame = resize_to_width(frame, s.frame_width)
     if vision.yolo is None:
         return {
             "error": "Pentru o poză e nevoie de modelul YOLO (ENABLE_YOLO=true). "

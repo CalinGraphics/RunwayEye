@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # File path, camera index ("0") or RTSP URL. Empty = no source (placeholder frames).
     video_source: str = "0"
     # Used automatically when VIDEO_SOURCE cannot be opened.
-    fallback_video: str = "data/videos/fallback.mp4"
+    fallback_video: str = "data/videos/synthetic_demo.mp4"
     camera_width: int = 1280
     camera_height: int = 720
     # All processing, overlays and calibration happen at this frame width.
@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     yolo_conf: float = 0.35
     yolo_imgsz: int = 640
     yolo_every_n: int = 2
+    # Open-vocabulary model for what FOD-A lacks: birds, animals, tyre pieces, bags (scripts/build_general_model.py).
+    enable_general_model: bool = True
+    general_model_path: str = "models/general.pt"
+    general_conf: float = 0.3
+    general_every_n: int = 2  # in YOLO runs: with YOLO_EVERY_N=2, once every 4 frames
 
     # Change detection
     reference_frames: int = 15
@@ -67,8 +72,8 @@ class Settings(BaseSettings):
     mockup_width_cm: float = 60.0
 
     # Data
-    use_local_data: bool = True
-    enable_supabase: bool = False
+    use_local_data: bool = False
+    enable_supabase: bool = True
     supabase_url: str = ""
     supabase_key: str = ""
     supabase_bucket: str = "fod-images"
@@ -99,6 +104,10 @@ class Settings(BaseSettings):
     @property
     def calibration_file(self) -> Path:
         return self.data_path / "calibration.json"
+
+    @property
+    def ignored_zones_file(self) -> Path:
+        return self.data_path / "ignored_zones.json"
 
     @property
     def tuning_file(self) -> Path:

@@ -18,6 +18,9 @@ data/uploads/
 data/*.db
 data/*.db-journal
 data/tuning.json
+data/ignored_zones.json
+data/calibration.json
+data/samples_result/
 data/access_key.txt
 data/eval/*.mp4
 data/eval/summary.*
@@ -25,10 +28,13 @@ data/eval_synthetic/
 data/dataset_fod/
 data/dataset_fod.zip
 
-# Model weights (best.pt is copied in manually; pretrained weights are downloaded)
-models/*.pt
-!models/.gitkeep
+# Model weights: pretrained ones are downloaded; our models/best.pt (FOD, ~5 MB) and models/general.pt
+# (open vocabulary) are committed
+# so a fresh clone detects FOD right away.
 *.pt
+!models/best.pt
+!models/general.pt
+models/cache/
 
 # Ultralytics run outputs
 runs/
@@ -39,3 +45,6 @@ runs/
 Thumbs.db
 .vscode/
 .idea/
+
+# Datasets (downloaded / generated locally; never committed)
+datasets/

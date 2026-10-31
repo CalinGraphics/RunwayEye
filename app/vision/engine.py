@@ -125,7 +125,14 @@ class ReferenceReset:
     reason: str
 
 
-EngineEvent = NewIncident | ObjectGone | ObjectReturned | ClassUpdated | LargeObject | ReferenceReset
+@dataclass
+class IgnoredZones:
+    """The operator marked a YOLO-only detection as a false alarm: zones to save and keep ignoring."""
+
+    zones: list[BBox]
+
+
+EngineEvent = NewIncident | ObjectGone | ObjectReturned | ClassUpdated | LargeObject | ReferenceReset | IgnoredZones
 
 
 @dataclass
@@ -165,6 +172,10 @@ class DetectionEngine:
         self._intrusion_frames = 0
         self._mask_shape: tuple[int, int] | None = None
         self._commands: queue.Queue = queue.Queue()
+        # Spots where YOLO alone keeps seeing something that isn't FOD (a marking, a light, a crack)
+        # and the operator said "false alarm". The change detector learns such a spot as background;
+        # these do the same for YOLO, and survive restarts (data/ignored_zones.json).
+        self.ignored: list[BBox] = []
 
     def reset_reference(self) -> None:
         self._commands.put(("reset", None))
@@ -185,6 +196,9 @@ class DetectionEngine:
 
     def set_yolo(self, yolo: Detector | None) -> None:
         self._commands.put(("yolo", yolo))
+
+    def set_ignored(self, zones: list[BBox]) -> None:
+        self._commands.put(("ignored", list(zones)))
 
     def _apply_commands(self) -> list[EngineEvent]:
         events: list[EngineEvent] = []
@@ -220,11 +234,15 @@ class DetectionEngine:
                         self.tracker.drop(t)
                 if absorb and site is not None and site.bbox is not None:
                     self.change.absorb(site.bbox)
+                    self.ignored.append(site.bbox)
+                    events.append(IgnoredZones(list(self.ignored)))
             elif cmd == "restore":
                 incident_id, site = arg
                 self._sites.setdefault(incident_id, site)
             elif cmd == "yolo":
                 self.yolo = arg
+            elif cmd == "ignored":
+                self.ignored = arg
 
     def process(self, frame: np.ndarray) -> EngineResult:
         events = self._apply_commands()
@@ -259,6 +277,8 @@ class DetectionEngine:
             cands = list(yolo_boxes)
         else:
             cands = fuse(change.regions, yolo_boxes)
+        if self.ignored:
+            cands = [c for c in cands if c.source != "yolo" or not self._is_ignored(c.bbox)]
 
         # An arm or a vehicle coming in over the edge: wait until it is gone, so the hand that
         # places an object is never reported as the object. Limited, so something left at
@@ -285,6 +305,9 @@ class DetectionEngine:
             learned_frames=self.change.learned_frames,
             global_change=change.global_change,
         )
+
+    def _is_ignored(self, b: BBox) -> bool:
+        return any(b.iou(z) >= 0.3 or z.contains(*b.center) for z in self.ignored)
 
     def _in_runway(self, center: tuple[int, int]) -> bool:
         return self.calibration is None or self.calibration.contains(*center)

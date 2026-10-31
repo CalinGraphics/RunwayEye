@@ -248,3 +248,33 @@ def test_something_left_at_the_edge_does_not_block_alerts():
     run(engine, [scene.frame([cable]) for _ in range(limit)])
     found = incidents(run(engine, [scene.frame([cable, BOLT]) for _ in range(15)]))
     assert len(found) == 1
+
+
+def test_yolo_only_false_alarm_is_remembered():
+    # YOLO keeps taking a runway marking for FOD: after "false alarm" that spot stays quiet.
+    from app.vision.engine import IgnoredZones
+
+    yolo = FakeYolo([(BBox(x=40, y=40, w=20, h=20), "label", "etichetă", 0.6)])
+    scene, engine = Scene(), make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    [inc] = incidents(run(engine, [scene.frame() for _ in range(25)]))
+    engine.close_incident(inc.detection.id, absorb=True)
+    events = run(engine, [scene.frame() for _ in range(40)])
+    assert incidents(events) == []
+    [saved] = [e for e in events if isinstance(e, IgnoredZones)]
+    assert saved.zones[0].contains(50, 50)
+
+    # After a restart the saved zones are loaded back.
+    fresh = make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    fresh.set_ignored(saved.zones)
+    assert incidents(run(fresh, [scene.frame() for _ in range(25)])) == []
+
+
+def test_ignored_zone_does_not_hide_a_real_new_object():
+    yolo = FakeYolo([(BBox(x=146, y=106, w=22, h=18), "bolt", "bolț", 0.9)])
+    scene, engine = Scene(), make_engine(params={"yolo_every_n": 1})
+    engine.set_ignored([BBox(x=140, y=100, w=40, h=30)])
+    learn(engine, scene)
+    engine.set_yolo(yolo)
+    # A bolt dropped on the dismissed spot is a change against the clean runway: still an alert.
+    found = incidents(run(engine, [scene.frame([BOLT]) for _ in range(10)]))
+    assert len(found) == 1 and found[0].detection.source == "both"

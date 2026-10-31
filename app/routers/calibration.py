@@ -42,6 +42,7 @@ def save_calibration(request: Request, body: CalibrationIn):
         raise HTTPException(422, "Colțurile nu formează un patrulater valid")
     cal.save(st.settings.calibration_file)
     vision.set_calibration(cal)
+    vision.clear_ignored()
     st.store.update_camera(
         {"id": st.settings.camera_id, "name": st.settings.camera_name, "source": st.settings.video_source,
          "calibration": cal.to_dict()}
@@ -58,4 +59,5 @@ def reset_calibration(request: Request):
     if f.exists():
         f.unlink()
     st.vision.set_calibration(None)
+    st.vision.clear_ignored()
     return {"ok": True, "message": "Calibrarea a fost ștearsă: toată imaginea e considerată pistă"}

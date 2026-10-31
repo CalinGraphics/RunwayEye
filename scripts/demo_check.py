@@ -32,11 +32,11 @@ def report(status: str, name: str, detail: str, fix: str = "") -> None:
 
 def check_files(s) -> None:
     if not (ROOT / ".env").exists():
-        report(WARN, ".env", "lipsește: se folosesc valorile implicite", "copy .env.example .env")
+        report(WARN, ".env", "lipsește: se folosesc valorile implicite", "python scripts/setup.py --skip-install")
     css = ROOT / "app" / "static" / "css" / "app.css"
     vendor = [ROOT / "app" / "static" / "vendor" / f for f in ("htmx.min.js", "alpine.min.js")]
     if not css.exists() or not all(v.exists() for v in vendor):
-        report(FAIL, "Pagini", "CSS-ul sau HTMX/Alpine lipsesc", "rulează o dată: npm install")
+        report(FAIL, "Pagini", "CSS-ul sau HTMX/Alpine lipsesc", "git checkout -- app/static (sau npm install)")
     else:
         report(OK, "Pagini", "CSS, HTMX și Alpine sunt locale (merg fără internet)")
     if not (ROOT / "app" / "static" / "sounds" / "alarm.wav").exists():
@@ -60,7 +60,7 @@ def check_video(s) -> None:
                 report(FAIL, label, f"{spec.label} nu răspunde", fix)
             else:
                 report(WARN, label, f"{spec.label} lipsește",
-                       "filmați un clip cu macheta în data/videos/ și setați FALLBACK_VIDEO")
+                       "python scripts/make_demo_clip.py, sau un clip filmat cu macheta în FALLBACK_VIDEO")
             continue
         ok, frame = cap.read()
         fps = cap.get(5) or 0
@@ -77,11 +77,10 @@ def check_model(s) -> None:
     if not s.enable_yolo:
         report(WARN, "Model YOLO", "oprit (ENABLE_YOLO=false): merge doar detecția schimbărilor")
         return
-    best = s.path(s.yolo_model_path)
-    from app.vision.yolo_detector import YoloDetector
+    from app.vision.yolo_detector import build_detector
 
     t0 = time.monotonic()
-    det = YoloDetector(best, s.path(s.yolo_fallback_model), s.yolo_conf, s.yolo_imgsz)
+    det = build_detector(s)
     if not det.loaded:
         report(FAIL, "Model YOLO", det.error or "nu se încarcă", "ENABLE_YOLO=false (detecția schimbărilor merge oricum)")
         return
@@ -96,9 +95,12 @@ def check_model(s) -> None:
     note = f"{det.model_name} · {ms:.0f} ms/cadru pe acest laptop · încărcat în {t1 - t0:.1f} s"
     if det.provisional:
         report(WARN, "Model YOLO", f"PROVIZORIU {note}: models/best.pt lipsește",
-               "copiați best.pt din Colab în models/ (training/train_colab.ipynb)")
+               "models/best.pt vine cu repo-ul (git pull); altfel training/README.md")
     else:
         report(OK, "Model YOLO", note)
+    if det.general is None:
+        report(WARN, "Model general", "models/general.pt lipsește: păsările și animalele intră doar ca «obiect necunoscut»",
+               "python scripts/build_general_model.py")
     if ms > 150:
         report(WARN, "Viteză YOLO", "laptopul e lent pentru YOLO pe fiecare cadru", "YOLO_EVERY_N=3 (sau 4)")
 
@@ -119,21 +121,27 @@ def check_calibration(s) -> None:
 
 
 def check_supabase(s) -> None:
-    if not s.enable_supabase:
-        report(OK, "Supabase", "oprit (ENABLE_SUPABASE=false): datele se salvează local în data/")
-        return
-    if s.use_local_data:
-        report(OK, "Supabase", "USE_LOCAL_DATA=true: doar copia locală")
+    from app.services.supabase_service import PUBLIC_KEY_HELP, key_role
+
+    if not s.enable_supabase or s.use_local_data:
+        report(WARN, "Supabase", "oprit în .env: datele rămân doar pe acest laptop",
+               "ENABLE_SUPABASE=true și USE_LOCAL_DATA=false")
         return
     if not (s.supabase_url and s.supabase_key):
-        report(FAIL, "Supabase", "lipsesc SUPABASE_URL sau SUPABASE_KEY", "completați .env sau ENABLE_SUPABASE=false")
+        report(WARN, "Supabase", "lipsesc SUPABASE_URL sau SUPABASE_KEY: datele rămân doar pe acest laptop",
+               "completați .env (supabase/schema.sql creează tabelele într-un proiect nou)")
+        return
+    if key_role(s.supabase_key) == "public":
+        report(FAIL, "Supabase", "cheia din .env e cea publică", PUBLIC_KEY_HELP)
         return
     try:
         from supabase import ClientOptions, create_client
 
         client = create_client(s.supabase_url, s.supabase_key, options=ClientOptions(postgrest_client_timeout=8))
         n = client.table("incidents").select("id", count="exact").limit(1).execute().count
-        report(OK, "Supabase", f"conectat · {n} incidente în tabel")
+        # The app writes its camera row at start anyway: a real write test.
+        client.table("cameras").upsert({"id": s.camera_id, "name": s.camera_name}).execute()
+        report(OK, "Supabase", f"conectat, citire și scriere · {n} incidente în tabel")
     except Exception as exc:
         report(FAIL, "Supabase", f"nu răspunde: {str(exc)[:120]}",
                "ENABLE_SUPABASE=false sau USE_LOCAL_DATA=true (aplicația merge local; sincronizează când revine)")

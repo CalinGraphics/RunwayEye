@@ -1,0 +1,146 @@
+{
+  "split": "test",
+  "mAP50": 0.9935,
+  "mAP50_95": 0.8825,
+  "precision": 0.9912,
+  "recall": 0.9937,
+  "inference_ms_per_image": 1.94,
+  "per_class": {
+    "adjustable_clamp": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8568
+    },
+    "adjustable_wrench": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9102
+    },
+    "battery": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8375
+    },
+    "bolt": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8055
+    },
+    "bolt_nut_set": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.7051
+    },
+    "bolt_washer": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8193
+    },
+    "clamp_part": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9649
+    },
+    "cutter": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9801
+    },
+    "fuel_cap": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9233
+    },
+    "hammer": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9623
+    },
+    "hose": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.995
+    },
+    "label": {
+      "mAP50": 0.9943,
+      "mAP50_95": 0.8002
+    },
+    "luggage_part": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9505
+    },
+    "luggage_tag": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8012
+    },
+    "metal_part": {
+      "mAP50": 0.9794,
+      "mAP50_95": 0.8442
+    },
+    "metal_sheet": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.995
+    },
+    "nail": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.6062
+    },
+    "nut": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.7469
+    },
+    "paint_chip": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.995
+    },
+    "pen": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9005
+    },
+    "plastic_part": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9779
+    },
+    "pliers": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9121
+    },
+    "rock": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.8166
+    },
+    "screw": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9281
+    },
+    "screwdriver": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9656
+    },
+    "soda_can": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9849
+    },
+    "tape": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.995
+    },
+    "washer": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.7296
+    },
+    "wire": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.9688
+    },
+    "wood": {
+      "mAP50": 0.995,
+      "mAP50_95": 0.995
+    },
+    "wrench": {
+      "mAP50": 0.9654,
+      "mAP50_95": 0.6844
+    }
+  },
+  "generated_at": "2026-10-31T12:27:22",
+  "dataset": "FOD-A v2.1 (Munyer et al., ICMLA 2021), 31 clase",
+  "dataset_split": {
+    "train": 25364,
+    "val": 2051,
+    "test": 2917
+  },
+  "split_method": "blocuri de cadre consecutive din fiecare video, 15 cadre eliminate la fiecare graniță",
+  "base_model": "yolo11n.pt",
+  "epochs_run": 20,
+  "imgsz": 320,
+  "gpu": "NVIDIA GeForce GTX 1650 Ti"
+}

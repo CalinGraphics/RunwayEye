@@ -6,11 +6,12 @@ cd /d "%~dp0"
 title RunwayEye
 
 if not exist "venv\Scripts\python.exe" (
-  echo [RunwayEye] Lipseste mediul Python ^(venv^). Urmeaza pasii din README.md:
-  echo     py -3.14 -m venv venv
-  echo     venv\Scripts\python -m pip install -r requirements.txt
-  pause
-  exit /b 1
+  echo [RunwayEye] Prima pornire: instalez mediul Python ^(cateva minute^).
+  py -3 scripts\setup.py || python scripts\setup.py || (
+    echo [RunwayEye] Nu gasesc Python 3.11+. Instalati-l de pe python.org ^(bifati "Add to PATH"^).
+    pause
+    exit /b 1
+  )
 )
 
 if not exist ".env" (
@@ -20,6 +21,8 @@ if not exist ".env" (
     echo [RunwayEye] Lipseste .env.example, pornesc cu valorile implicite.
   )
 )
+
+if not exist "dataideos\synthetic_demo.mp4" "venv\Scripts\python.exe" scripts\make_demo_clip.py
 
 if not exist "app\static\css\app.css" (
   echo [RunwayEye] Lipseste CSS-ul compilat. Ruleaza o data: npm install

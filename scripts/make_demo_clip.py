@@ -82,7 +82,9 @@ def main() -> None:
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    writer = cv2.VideoWriter(str(out), cv2.VideoWriter_fourcc(*"mp4v"), FPS, (W, H))
+    # Written under another name and renamed at the end: an interrupted run never leaves a broken clip.
+    part = out.with_name(out.stem + ".part.mp4")
+    writer = cv2.VideoWriter(str(part), cv2.VideoWriter_fourcc(*"mp4v"), FPS, (W, H))
     if not writer.isOpened():
         sys.exit(f"Nu pot scrie {out}")
 
@@ -104,6 +106,7 @@ def main() -> None:
                 draw_hand(frame, *pos)
         writer.write(frame)
     writer.release()
+    part.replace(out)
     print(f"Am scris {out} ({args.seconds} s, {W}x{H}, {FPS} cadre/s)")
 
 

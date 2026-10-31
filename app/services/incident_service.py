@@ -116,7 +116,10 @@ class IncidentService:
         self.large_object: dict | None = None
         self._lock = threading.RLock()
         self._open: dict[str, Incident] = {}
-        for data in store.local.load_incidents("WHERE status IN ('new','confirmed','dispatched')"):
+        # Incidents of other cameras (pulled from Supabase) are in the history, not on this Command Center.
+        for data in store.local.load_incidents(
+            "WHERE status IN ('new','confirmed','dispatched') AND json_extract(data, '$.camera_id')=?", (camera_id,)
+        ):
             inc = Incident.model_validate(data)
             self._open[inc.id] = inc
 
@@ -169,6 +172,11 @@ class IncidentService:
 
     def image(self, incident_id: str, kind: str) -> bytes | None:
         return self.store.local.read_image(incident_id, kind)
+
+    def remote_image_url(self, incident_id: str, kind: str) -> str | None:
+        """Public Supabase Storage URL of an image taken by another camera."""
+        rows = self.store.local.load_incidents("WHERE id=?", (incident_id,), limit=1)
+        return (rows[0].get("remote_images") or {}).get(kind) if rows else None
 
     def _save(self, inc: Incident, action: str, note: str | None = None, publish: str = "incident.updated") -> None:
         inc.updated_at = utcnow()

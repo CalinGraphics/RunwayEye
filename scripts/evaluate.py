@@ -39,6 +39,7 @@ from app.vision.calibration import Calibration  # noqa: E402
 from app.vision.capture import resize_to_width  # noqa: E402
 from app.vision.engine import DetectionEngine, EngineParams, NewIncident  # noqa: E402
 from app.vision.pipeline import TUNABLE, runway_geometry  # noqa: E402
+from app.vision.types import COARSE_CLASSES, FOD_CLASSES, class_group  # noqa: E402
 
 ZONE_MARGIN_PX = 15
 
@@ -127,7 +128,7 @@ def summarize(results: list[dict], yolo_name: str) -> dict:
     lat = [o["latency_s"] for o in detected]
     hours = sum(r["duration_s"] for r in results) / 3600
     fa = sum(r["false_alarms"] for r in results)
-    known = [o for o in detected if o["label"] in ("surub", "piulita", "cheie", "metal", "plastic")]
+    known = [o for o in detected if o["label"] in COARSE_CLASSES or o["label"] in FOD_CLASSES]
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "model": yolo_name,
@@ -142,7 +143,9 @@ def summarize(results: list[dict], yolo_name: str) -> dict:
         "latency_mean_s": round(statistics.mean(lat), 2) if lat else None,
         "latency_median_s": round(statistics.median(lat), 2) if lat else None,
         "latency_max_s": round(max(lat), 2) if lat else None,
-        "class_correct": sum(1 for o in known if o["class_key"] == o["label"]),
+        # Annotations use a coarse group ("surub") or an exact FOD-A class ("bolt"); a model
+        # predicting "bolt" is right for both.
+        "class_correct": sum(1 for o in known if o["class_key"] and o["label"] in (o["class_key"], class_group(o["class_key"]))),
         "ms_per_frame": round(statistics.mean(r["ms_per_frame"] for r in results), 1) if results else None,
         "class_total": len(known),
         "per_clip": results,
@@ -202,9 +205,9 @@ def main() -> None:
 
     yolo, yolo_name = None, "fără YOLO (doar detecția schimbărilor)"
     if s.enable_yolo and not args.no_yolo:
-        from app.vision.yolo_detector import YoloDetector
+        from app.vision.yolo_detector import build_detector
 
-        det = YoloDetector(s.path(s.yolo_model_path), s.path(s.yolo_fallback_model), s.yolo_conf, s.yolo_imgsz)
+        det = build_detector(s)
         if det.loaded:
             yolo = det
             yolo_name = det.model_name + (" (provizoriu)" if det.provisional else "")

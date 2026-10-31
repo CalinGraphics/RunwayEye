@@ -1,14 +1,18 @@
-"""Incident storage: always local first (SQLite + JPEGs on disk), Supabase synced in the background.
+"""Incident storage: Supabase is the central database, the local SQLite copy is its offline buffer.
 
-The local copy is what the app reads, so detection, the dashboard and the team
-page keep working without internet. When Supabase is enabled, a background
-thread pushes every unsynced row and image; failures stay queued and are retried.
+Every incident is written locally first (a few ms, no network), so the red screen, the sound and
+the team page never wait for the internet. A background thread pushes each new or changed row and
+image to Supabase within a second or two; when the connection drops they stay queued and go out
+when it returns. The same thread pulls the incidents of the other cameras, so the history on every
+laptop shows the whole airport.
 """
 
+import base64
 import json
 import logging
 import sqlite3
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -19,7 +23,10 @@ INCIDENT_COLUMNS = [
     "confidence", "risk", "bbox", "center_px", "sector", "runway_distance_m",
     "centerline_offset_m", "size_estimate_cm", "snapshot_url", "crop_url", "object_present",
     "confirmed_at", "dispatched_at", "team_ack_at", "resolved_at", "false_alarm_at", "updated_at",
+    "ai_description",
 ]
+TIME_COLUMNS = ("detected_at", "confirmed_at", "dispatched_at", "team_ack_at", "resolved_at", "false_alarm_at", "updated_at")
+PULL_EVERY_S = 10.0
 
 
 class LocalStore:
@@ -53,6 +60,7 @@ class LocalStore:
                 );
                 CREATE INDEX IF NOT EXISTS events_incident ON incident_events(incident_id);
                 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT, synced INTEGER DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
                 """
             )
             self._db.commit()
@@ -78,6 +86,41 @@ class LocalStore:
                 (inc["id"], inc["detected_at"], inc["status"], inc["risk"], inc.get("sector"),
                  inc.get("class_key"), json.dumps(inc, ensure_ascii=False)),
             )
+            self._db.commit()
+
+    def upsert_remote(self, row: dict) -> bool:
+        """An incident of another camera, pulled from Supabase. Local unsynced changes win."""
+        inc = {k: v for k, v in row.items() if k not in ("crop_url", "snapshot_url")}
+        inc["remote_images"] = {"crop": row.get("crop_url"), "snapshot": row.get("snapshot_url")}
+        with self._lock:
+            cur = self._db.execute(
+                """INSERT INTO incidents (id, detected_at, status, risk, sector, class_key, data, synced)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                   ON CONFLICT(id) DO UPDATE SET status=excluded.status, risk=excluded.risk,
+                     sector=excluded.sector, class_key=excluded.class_key, data=excluded.data, synced=1
+                   WHERE incidents.synced=1""",
+                (inc["id"], inc["detected_at"], inc["status"], inc["risk"], inc.get("sector"),
+                 inc.get("class_key"), json.dumps(inc, ensure_ascii=False)),
+            )
+            self._db.commit()
+        return cur.rowcount > 0
+
+    def add_remote_events(self, events: list[dict]) -> None:
+        with self._lock:
+            self._db.executemany(
+                "INSERT OR IGNORE INTO incident_events (id, incident_id, at, action, note, synced) VALUES (?,?,?,?,?,1)",
+                [(e["id"], e["incident_id"], e["at"], e["action"], e.get("note")) for e in events],
+            )
+            self._db.commit()
+
+    def get_meta(self, key: str) -> str | None:
+        with self._lock:
+            row = self._db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        with self._lock:
+            self._db.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)", (key, value))
             self._db.commit()
 
     def add_event(self, event: dict) -> None:
@@ -151,6 +194,26 @@ class LocalStore:
             self._db.close()
 
 
+def key_role(key: str) -> str:
+    """'secret' (sb_secret_… / service_role JWT), 'public' (sb_publishable_… / anon JWT) or '?'."""
+    if key.startswith("sb_secret_"):
+        return "secret"
+    if key.startswith("sb_publishable_"):
+        return "public"
+    if key.count(".") == 2:
+        try:
+            payload = key.split(".")[1]
+            role = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4))).get("role")
+        except ValueError:
+            return "?"
+        return "secret" if role == "service_role" else "public" if role == "anon" else "?"
+    return "?"
+
+
+PUBLIC_KEY_HELP = ("SUPABASE_KEY e cheia publică: cu RLS nu poate scrie. Puneți cheia secretă "
+                   "(Supabase → Project Settings → API Keys → Secret keys, sb_secret_…)")
+
+
 def _iso(value) -> str | None:
     if value is None:
         return None
@@ -167,6 +230,9 @@ class SupabaseSync:
         self.state = "pornire"
         self.error: str | None = None
         self._client = None
+        self._columns = list(INCIDENT_COLUMNS)
+        self._next_pull = 0.0
+        self.on_pulled = None  # called after incidents of other cameras arrive
         self._uploaded_images: set[str] = set()
         self._stop = threading.Event()
         self._wake = threading.Event()
@@ -217,8 +283,43 @@ class SupabaseSync:
         return client.storage.from_(self.bucket).get_public_url(path)
 
     def _sync_once(self) -> None:
+        self._push()
+        if time.monotonic() >= self._next_pull:
+            self._pull()
+            self._next_pull = time.monotonic() + PULL_EVERY_S
+
+    def _upsert_incidents(self, client, rows: list[dict]) -> None:
+        try:
+            client.table("incidents").upsert(rows).execute()
+        except Exception as exc:
+            # Project created before the ai_description column (supabase/migrations/): keep syncing without it.
+            if "ai_description" not in str(exc) or "ai_description" not in self._columns:
+                raise
+            log.warning("Supabase: coloana ai_description lipsește (rulați supabase/migrations/)")
+            self._columns.remove("ai_description")
+            client.table("incidents").upsert([{k: r[k] for k in r if k != "ai_description"} for r in rows]).execute()
+
+    def _pull(self) -> None:
+        """Incidents of the other cameras changed since the last pull, into the local history."""
+        client = self._connect()
+        since = self.store.get_meta("pulled_until") or "1970-01-01T00:00:00+00:00"
+        rows = (
+            client.table("incidents").select("*").neq("camera_id", self.camera["id"]).gt("updated_at", since)
+            .order("updated_at").limit(200).execute().data
+        )
+        if not rows:
+            return
+        changed = [r["id"] for r in rows if self.store.upsert_remote(r)]
+        if changed:
+            events = client.table("incident_events").select("*").in_("incident_id", changed).execute().data
+            self.store.add_remote_events(events)
+        self.store.set_meta("pulled_until", rows[-1]["updated_at"])
+        if changed and self.on_pulled:
+            self.on_pulled()
+
+    def _push(self) -> None:
         incs, evs, kvs = self.store.unsynced()
-        if not (incs or evs or kvs) and self._client is not None:
+        if not (incs or evs or kvs):
             return
         client = self._connect()
         for key, value in kvs:
@@ -232,14 +333,14 @@ class SupabaseSync:
             rows, versions = [], {}
             for inc in incs:
                 versions[inc["id"]] = json.dumps(inc, ensure_ascii=False)
-                row = {k: inc.get(k) for k in INCIDENT_COLUMNS}
-                row["crop_url"] = self._upload_image(client, inc["id"], "crop")
-                row["snapshot_url"] = self._upload_image(client, inc["id"], "snapshot")
-                for k in ("detected_at", "confirmed_at", "dispatched_at", "team_ack_at", "resolved_at",
-                          "false_alarm_at", "updated_at"):
+                row = {k: inc.get(k) for k in self._columns}
+                remote = inc.get("remote_images") or {}
+                for kind in ("crop", "snapshot"):
+                    row[f"{kind}_url"] = self._upload_image(client, inc["id"], kind) or remote.get(kind)
+                for k in TIME_COLUMNS:
                     row[k] = _iso(row[k])
                 rows.append(row)
-            client.table("incidents").upsert(rows).execute()
+            self._upsert_incidents(client, rows)
             self.store.mark_synced("incidents", list(versions), versions=versions)
         if evs:
             client.table("incident_events").upsert(evs).execute()
@@ -277,12 +378,13 @@ class DataStore:
 
     def status(self) -> dict:
         s = self.settings
-        if not s.enable_supabase:
-            return {"state": "oprit", "label": "Supabase oprit", "pending": 0}
-        if s.use_local_data:
-            return {"state": "local", "label": "date locale", "pending": 0}
+        if not s.enable_supabase or s.use_local_data:
+            return {"state": "oprit", "label": "doar local (Supabase oprit în .env)", "pending": 0}
         if self.sync is None:
-            return {"state": "eroare", "label": "Supabase: lipsesc URL / cheia", "pending": 0}
+            return {"state": "local", "label": "doar local (lipsesc SUPABASE_URL / SUPABASE_KEY)", "pending": 0}
+        if key_role(s.supabase_key) == "public":
+            return {"state": "eroare", "label": "Supabase: cheie publică, nu poate scrie",
+                    "pending": self.local.pending_count(), "error": PUBLIC_KEY_HELP}
         pending = self.local.pending_count()
         label = {"conectat": "Supabase conectat", "eroare": "Supabase indisponibil", "pornire": "Supabase…"}.get(
             self.sync.state, self.sync.state

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.services.incident_service import STATUS_LABELS
 from app.templating import LOCAL_TZ, _local, fmt_seconds, templates
@@ -49,6 +49,9 @@ def incident_image(request: Request, incident_id: str, kind: str):
         raise HTTPException(404)
     data = request.app.state.incidents.image(incident_id, kind)
     if data is None:
+        url = request.app.state.incidents.remote_image_url(incident_id, kind)
+        if url:
+            return RedirectResponse(url)
         raise HTTPException(404, "Imaginea nu există")
     return Response(data, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 

@@ -2,6 +2,7 @@ import pytest
 
 from app.services.risk import assess_risk
 from app.vision.calibration import Calibration, RunwayGeometry
+from app.vision.types import CLASS_LABELS, FOD_CLASSES, class_group, class_key
 
 GEOM = RunwayGeometry(length_m=2500, width_m=45, sectors_along=6, sectors_across=3)
 # Oblique view: far end (threshold 27) narrower, like a camera on a pole.
@@ -90,6 +91,12 @@ def test_mockup_size_estimate():
         ("surub", 2, "critic"),
         ("piulita", None, "critic"),
         ("plastic", 30, "mediu"),
+        # FOD-A classes
+        ("bolt", None, "critic"),
+        ("wrench", None, "critic"),
+        ("rock", 1, "critic"),
+        ("plastic_part", None, "mediu"),
+        ("luggage_tag", 20, "mediu"),
         ("unknown", None, "de verificat"),
         ("unknown", 5, "de verificat"),
         ("unknown", 20, "critic"),
@@ -97,3 +104,37 @@ def test_mockup_size_estimate():
 )
 def test_risk(key, size, risk):
     assert assess_risk(key, size, unknown_critical_cm=15) == risk
+
+
+def test_every_fod_class_has_a_label_and_a_risk():
+    for key in FOD_CLASSES:
+        assert CLASS_LABELS[key]
+        assert assess_risk(key, None, unknown_critical_cm=15) in ("critic", "mediu")
+    assert len(FOD_CLASSES) == 31
+
+
+def test_class_group():
+    assert class_group("bolt") == "surub"
+    assert class_group("nut") == "piulita"
+    assert class_group("surub") == "surub"
+    assert class_group("unknown") == "unknown"
+
+
+def test_class_key_normalizes_model_names():
+    assert class_key("BoltNutSet") == "bolt_nut_set"
+    assert class_key("metal part") == "metal_part"
+    assert class_key("Piuliță ") == "piulita"
+    assert class_key("bolt_nut_set") == "bolt_nut_set"
+
+
+def test_rock_is_its_own_group_and_critical():
+    assert class_group("rock") == "piatra"
+    assert assess_risk("rock", None, unknown_critical_cm=15) == "critic"
+    assert assess_risk("something_else", None, unknown_critical_cm=15) == "de verificat"
+
+
+def test_general_classes_risk():
+    assert assess_risk("pasare", None, unknown_critical_cm=15) == "critic"
+    assert assess_risk("anvelopa", None, unknown_critical_cm=15) == "critic"
+    assert assess_risk("punga", None, unknown_critical_cm=15) == "mediu"
+    assert CLASS_LABELS["pasare"] == "pasăre"
