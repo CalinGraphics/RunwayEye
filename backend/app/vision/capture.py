@@ -25,7 +25,7 @@ def parse_source(raw: str) -> SourceSpec:
     if not value or value.lower() == "none":
         return SourceSpec(value, "none", None, "fără sursă")
     if value.isdigit():
-        return SourceSpec(value, "camera", int(value), f"cameră {value}")
+        return SourceSpec(value, "camera", int(value), f"camera {value}")
     if "://" in value:
         scheme = value.split("://", 1)[0].upper()
         return SourceSpec(value, "stream", value, f"flux {scheme}")
@@ -88,7 +88,7 @@ def probe_cameras(skip: int | None = None, max_index: int = 4) -> list[int]:
         if i == skip:
             found.append(i)
             continue
-        cap = _open(SourceSpec(str(i), "camera", i, f"cameră {i}"), 640, 480)
+        cap = _open(SourceSpec(str(i), "camera", i, f"camera {i}"), 640, 480)
         if cap is not None:
             found.append(i)
             cap.release()

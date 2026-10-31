@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}RunwayEye{% endblock %}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%231769ff' stroke='%23ffffff' stroke-width='3'/><circle cx='16' cy='16' r='5' fill='%23ffffff'/></svg>">
+  <meta name="theme-color" content="#f7f3ea">
+  <link rel="icon" href="/static/brand/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/brand/apple-touch-icon.png">
+  <link rel="manifest" href="/static/brand/site.webmanifest">
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version() }}">
   <script src="/static/vendor/htmx.min.js?v={{ asset_version() }}" defer></script>
   <script>window.RUNWAY_END = {{ runway_ends[0] | tojson }};</script>

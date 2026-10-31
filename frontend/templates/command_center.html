@@ -39,7 +39,7 @@
         </button>
         <div class="dropdown dropdown-end">
           <div tabindex="0" role="button" class="btn btn-sm btn-pill" :aria-label="systemLabel">
-            <span class="status-dot" :class="systemDot"></span><span class="hidden sm:inline" x-text="systemLabel">Se conectează…</span>
+            <span class="status-dot" :class="systemDot"></span><span class="readout sm:hidden" x-show="systemIssues.length" x-cloak x-text="systemIssues.length"></span><span class="hidden sm:inline" x-text="systemLabel">Se conectează…</span>
           </div>
           <div tabindex="0" class="dropdown-content z-50 mt-2 w-72 rounded-box border border-line bg-base-100 p-2 shadow-float">
             <template x-for="r in systemRows" :key="r.k">
@@ -193,7 +193,7 @@
           <div x-show="status && !status.calibrated" x-cloak class="absolute inset-x-0 top-14 bottom-0 flex items-center justify-center p-4">
             <div class="flex max-w-md flex-col items-center gap-3 rounded-box border border-line bg-base-100 px-5 py-4 text-center shadow-float sm:flex-row sm:text-left">
               <span class="icon-tile">{{ icon("target", "size-5") }}</span>
-              <p class="text-sm text-base-content/80">Marchează o dată colțurile pistei pe imaginea camerei și aici apare locul exact al fiecărui obiect.</p>
+              <p class="text-sm text-base-content/80">Marchează o singură dată colțurile pistei pe imaginea camerei. Apoi aici vezi locul exact al fiecărui obiect.</p>
               <a href="/calibrate" class="btn btn-sm btn-primary shrink-0">Calibrează</a>
             </div>
           </div>

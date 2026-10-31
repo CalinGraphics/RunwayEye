@@ -13,7 +13,7 @@
            @drop.prevent="over = false; $refs.file.files = $event.dataTransfer.files; name = $refs.file.files[0]?.name || ''">
       <span class="icon-tile size-12">{{ icon("upload", "size-6") }}</span>
       <span class="font-semibold" x-text="name || 'Alege sau trage aici o poză ori un clip'">Alege sau trage aici o poză ori un clip</span>
-      <span class="text-xs text-base-content/70">Pozele trec doar prin modelul YOLO. Clipurile, de cel mult 2 minute, trec și prin detecția schimbărilor.</span>
+      <span class="text-xs text-base-content/70">O poză e verificată de detectorul de obiecte. Un clip (cel mult 2 minute) e comparat și cu pista curată.</span>
       <input x-ref="file" type="file" name="file" :required="!clip" accept="image/*,video/*" class="sr-only"
              @change="name = $event.target.files[0]?.name || ''; if (name) clip = ''">
     </label>

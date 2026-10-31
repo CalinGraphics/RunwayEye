@@ -186,16 +186,9 @@
   }
   /* An eye: blue tile, white iris ring, white pupil. */
   .brand-mark {
-    @apply relative inline-grid size-10 shrink-0 place-items-center rounded-[14px] bg-primary;
+    @apply inline-block size-10 shrink-0 rounded-[25%] bg-cover bg-center;
+    background-image: url("../brand/logo-mark.svg");
     box-shadow: var(--shadow-blue);
-  }
-  .brand-mark::before {
-    content: "";
-    @apply absolute inset-[24%] rounded-full border-2 border-white/80;
-  }
-  .brand-mark::after {
-    content: "";
-    @apply size-[22%] rounded-full bg-white;
   }
   .brand-word {
     @apply text-[0.95rem] font-extrabold tracking-tight;
@@ -210,7 +203,7 @@
     @apply flex min-h-14 items-center justify-between gap-2 px-4 pt-3 pb-2 sm:px-5;
   }
   .panel-head > h2 {
-    @apply min-w-0 truncate text-[0.95rem] font-bold text-base-content;
+    @apply min-w-0 text-[0.95rem] font-bold text-balance text-base-content sm:truncate;
   }
   .eyebrow {
     @apply min-w-0 truncate text-[0.7rem] font-semibold tracking-[0.08em] text-base-content/70 uppercase;
