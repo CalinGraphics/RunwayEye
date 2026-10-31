@@ -25,9 +25,9 @@
               x-text="criticalCount + ' CRITIC'"></span>
       </div>
 
-      <div class="ml-auto hidden items-baseline gap-2 rounded-full xl:flex bg-base-100 border border-line shadow-card px-4 py-1.5" aria-label="Ora locală și UTC">
-        <span class="readout text-lg leading-none font-semibold" x-text="localTime">--:--:--</span>
-        <span class="readout text-xs leading-none text-base-content/70" x-text="utcTime + 'Z'"></span>
+      <div class="ml-auto hidden items-center gap-3 px-1 xl:flex" aria-label="Ora locală și UTC">
+        <span class="clock-cell"><span class="clock-label">Local</span><span class="clock-time" x-text="localTime">--:--:--</span></span>
+        <span class="clock-cell"><span class="clock-label">UTC</span><span class="clock-time text-base-content/70" x-text="utcTime">--:--</span></span>
       </div>
 
       <div class="ml-auto flex shrink-0 items-center gap-1 xl:ml-0">

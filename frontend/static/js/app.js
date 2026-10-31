@@ -358,7 +358,7 @@ document.addEventListener("alpine:init", () => {
       return new Date(this.now).toLocaleTimeString("ro-RO");
     },
     get utcTime() {
-      return new Date(this.now).toISOString().slice(11, 19);
+      return new Date(this.now).toISOString().slice(11, 16);
     },
 
     markerStyle(inc) {
