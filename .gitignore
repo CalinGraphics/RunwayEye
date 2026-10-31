@@ -8,43 +8,25 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Node
+# Node (only needed to rebuild frontend/static/css/app.css)
 node_modules/
 
-# Data produced at runtime
-data/videos/
-data/images/
-data/uploads/
-data/*.db
-data/*.db-journal
-data/tuning.json
-data/ignored_zones.json
-data/calibration.json
-data/samples_result/
-data/access_key.txt
-data/eval/*.mp4
-data/eval/summary.*
-data/eval_synthetic/
-data/dataset_fod/
-data/dataset_fod.zip
+# Data produced at runtime (incidents, images, calibration, demo clip, evaluation output)
+data/
 
-# Model weights: pretrained ones are downloaded; our models/best.pt (FOD, ~5 MB) and models/general.pt
-# (open vocabulary) are committed
-# so a fresh clone detects FOD right away.
+# Model weights: pretrained ones are downloaded; our backend/models/best.pt (FOD, ~5 MB) and
+# backend/models/general.pt (open vocabulary) are committed, so a fresh clone detects right away.
 *.pt
-!models/best.pt
-!models/general.pt
-models/cache/
+!backend/models/best.pt
+!backend/models/general.pt
+backend/models/cache/
 
-# Ultralytics run outputs
+# Training: datasets are downloaded, runs are produced locally
+datasets/
 runs/
-
 
 # OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# Datasets (downloaded / generated locally; never committed)
-datasets/

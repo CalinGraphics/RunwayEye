@@ -1,239 +1,197 @@
 # RunwayEye
 
-Supraveghere video a pistei care detectează obiectele străine (FOD) și alertează echipa de intervenție.
+Supraveghere video a pistei: detectează obiectele străine (șuruburi, unelte, pietre, deșeuri, păsări și alte
+animale, persoane, orice obiect nou), spune cât de grave sunt pentru o aeronavă și alertează imediat echipa de
+intervenție pe telefon.
 Craiova Hackathon V2.0 · track GROUND CONTROL.
 
-**video → YOLO + detecția schimbărilor → persistență → alertă (ecran roșu, sunet) → sector și metri pe pistă →
-telefonul echipei (`/team`) → „Am preluat” / „Obiect eliminat” → istoric**
+**cameră → detecție (2 modele YOLO + detecția schimbărilor) → alertă pe panou și pe telefon → echipa preia și
+elimină obiectul → istoric în Supabase**
 
-Datele merg în **Supabase** (baza centrală, toate camerele). Detecția, panoul, alertele și pagina echipei rulează
-pe laptop și merg și fără internet: incidentele intră într-o coadă și ajung în Supabase când revine conexiunea.
+## Pornire
 
-## Pornire rapidă (Windows, macOS, Linux)
-
-Cerință: Python 3.11 sau mai nou (testat pe 3.14), de pe python.org (pe Windows bifați „Add to PATH”).
-Nu e nevoie de Node.js, de placă video sau de cameră: CSS-ul, fonturile, HTMX/Alpine și modelul antrenat
-(`models/best.pt`) vin cu repo-ul.
+Cerință: Python 3.11 sau mai nou, de pe python.org (pe Windows bifați „Add to PATH”). Nu e nevoie de placă video,
+de Node.js sau de cameră: modelele antrenate și interfața vin gata cu proiectul.
 
 ```powershell
 git clone <repo> RunwayEye
 cd RunwayEye
-start_demo.bat          # Windows (merge și dublu clic)
+start_demo.bat          # Windows: dublu clic pe fișier
 ./start_demo.sh         # macOS / Linux
 ```
 
-La prima pornire scriptul rulează `scripts/setup.py` (~5 minute, o singură dată): creează `venv/`, instalează
-dependențele (pe Linux varianta CPU a torch), copiază `.env.example` în `.env` și desenează clipul demo
-`data/videos/synthetic_demo.mp4`. Apoi pornește serverul pe `0.0.0.0:8000`, afișează adresa pentru telefon
-și deschide panoul în browser. Manual: `python scripts/setup.py`, apoi `venv\Scripts\python -m app`
-(Windows) sau `venv/bin/python -m app`.
+Prima pornire instalează tot (~5 minute, o singură dată). Apoi panoul se deschide singur în browser, la
+http://localhost:8000. Un al doilea dublu clic, cu serverul pornit, doar redeschide panoul. Serverul se oprește
+închizând fereastra lui.
 
-Fără cameră web, aplicația trece singură pe clipul demo (bara de stare arată **REZERVĂ**).
-`venv/` nu se copiază de pe alt calculator; dacă a fost copiat, `setup.py` îl recunoaște și îl reface.
+Implicit rulează **clipul demo** `data/videos/synthetic_demo.mp4`: o pistă pe care o mână lasă pe rând obiecte
+reale fotografiate (doză, cutter, baterie, clește, o bucată de plastic), apoi ridică unul. Camera web, o cameră
+de supraveghere sau alt clip se aleg din pagina **Sursă**.
 
-Înainte de fiecare prezentare: `python scripts\demo_check.py`. Pentru fiecare problemă spune ce setare din `.env` o ocolește.
+## Cum se folosește
 
-## Paginile
-
-| Adresă | Ce e |
+| Pagina | La ce folosește |
 |---|---|
-| `/` | Command Center: video live, harta pistei cu sectoare, alertele, bara de stare |
-| `/team` | Telefonul echipei de intervenție (alertă roșie, sunet, vibrație, „Am preluat”, „Obiect eliminat”) |
-| `/incidents` | Istoricul, cu filtre și cronologia fiecărui incident; export CSV pentru Excel (`;`, virgulă zecimală) |
-| `/calibrate` | Cele 4 colțuri ale pistei: masca pistei, sectoarele și metrii |
-| `/upload` | Test pe o poză sau un clip, fără să creeze incidente |
-| `/health`, `/api/status` | Verificări rapide |
+| **Panou** (`/`) | Video live, harta pistei pe sectoare, alertele active cu severitatea lor. Fiecare alertă: **Confirm** → **Echipă trimisă** → **Obiect eliminat**, sau **Alarmă falsă**; clic pe poză pentru detalii (pericole, acțiune, timp maxim) |
+| **Sursă** (`/source`) | Ce filmează sistemul: un clip (din listă sau încărcat de pe calculator), camera web sau o cameră de supraveghere IP (`rtsp://…`), cu test de conexiune. Alegerea rămâne și după repornire |
+| **Telefon echipă** (butonul de sus) | Codul QR pentru telefoanele echipei și câte telefoane sunt conectate |
+| **Istoric** (`/incidents`) | Toate incidentele, cu filtre, cronologia fiecăruia și export CSV pentru Excel |
+| **Calibrare** (`/calibrate`) | Cele 4 colțuri ale pistei: de aici vin sectorul și distanța în metri ale fiecărei alerte |
+| **Test** (`/upload`) | Verificare pe o poză sau un clip; cu „Trimite ca incident real” pornește alerta ca o cameră live |
 
-## Sursa video (`VIDEO_SOURCE` în `.env`)
-
-| Valoare | Sursă |
-|---|---|
-| `0`, `1`… | Camera web cu acel index |
-| `data/videos/macheta.mp4` | Fișier, redat în buclă la viteza lui |
-| `rtsp://…` | Cameră IP |
-| `http://<ip-telefon>:8080/video` | Telefon cu o aplicație de tip „IP Webcam” |
-
-Codul e același pentru toate. Dacă sursa nu răspunde, aplicația trece automat pe `FALLBACK_VIDEO`
-(filmați un clip cu macheta!), iar bara de stare arată **REZERVĂ**.
-
-Fără cameră și fără clip real se folosește `data/videos/synthetic_demo.mp4` (desenat de `scripts/setup.py`):
-o machetă în care o „mână” lasă un șurub și o agrafă. E doar pentru test, nu pentru cifre.
+Primii pași, o singură dată:
+1. **Calibrare:** clic pe colțurile pistei, în ordinea prag 09 stânga, prag 09 dreapta, prag 27 dreapta,
+   prag 27 stânga (stânga/dreapta văzute de la pragul 09). Dimensiunile pistei sunt în `.env` (`RUNWAY_*`).
+2. Cu pista goală: **Pista e curată acum** (pe imaginea video). Tot ce apare nou după asta e verificat.
+3. **Telefoanele echipei:** vezi mai jos.
 
 ## Telefonul echipei
 
-1. Laptopul și telefonul în aceeași rețea (cel mai sigur: hotspot de pe un telefon).
-2. Portul permis în firewall (o singură dată, PowerShell ca administrator):
-   `netsh advfirewall firewall add rule name="RunwayEye 8000" dir=in action=allow protocol=TCP localport=8000`
-3. Pe panou: **Telefon echipă** → cod QR cu `http://<IP-laptop>:8000/team`.
-   Codul conține și cheia de acces (`?key=…`): fără ea, alte dispozitive din rețea primesc „Acces doar cu codul QR”.
-   Laptopul pe care rulează serverul nu are nevoie de cheie. Pentru panou pe alt laptop: `http://<IP-laptop>:8000/?key=<cheia>`
-   (cheia e în `data/access_key.txt` sau `ACCESS_KEY` din `.env`).
-4. Pe telefon: apăsați o dată **Activează alertele** (browserele blochează sunetul și vibrația până la prima atingere).
-   Vibrația merge pe Android (Chrome); iPhone nu permite vibrația din pagini web.
+1. Pe panou: **Telefon echipă**, apoi scanați codul QR cu camera telefonului (cheia de acces e inclusă în cod).
+2. Pe telefon apăsați o dată **Activează alertele**, ca să sune și să vibreze (vibrația doar pe Android).
+3. În fereastra de pe panou apare **✓ telefon conectat**. Probă: **Test** → o poză din `samples\fod-a-test\`
+   cu „Trimite ca incident real”: telefonul arată alerta roșie.
 
-## Calibrarea
+**Dacă telefonul nu deschide pagina:**
+- Rețelele de facultate sau de firmă blochează des legătura dintre dispozitive, chiar în aceeași rețea Wi-Fi.
+  Porniți pe laptop **Hotspot mobil** (Setări → Rețea și internet → Hotspot mobil), conectați telefonul la el și
+  alegeți în fereastra **Telefon echipă** adresa „Hotspotul laptopului”. E și varianta cea mai sigură pentru o
+  demonstrație: nu depinde de rețeaua sălii.
+- Firewall-ul Windows, o singură dată, în PowerShell deschis ca administrator:
+  `netsh advfirewall firewall add rule name="RunwayEye 8000" dir=in action=allow protocol=TCP localport=8000 profile=any`
+- Telefonul pe date mobile nu vede laptopul: trebuie să fie pe același Wi-Fi sau pe hotspotul laptopului.
 
-`/calibrate` → clic pe colțuri în ordinea: prag 09 stânga, prag 09 dreapta, prag 27 dreapta, prag 27 stânga
-(stânga/dreapta privit de la pragul 09). Se salvează în `data/calibration.json`. Dimensiunile pistei
-(`RUNWAY_LENGTH_M`, `RUNWAY_WIDTH_M`) și ale machetei (`MOCKUP_*_CM`) sunt în `.env` și **trebuie verificate**.
-Fără calibrare, toată imaginea e considerată pistă și alertele nu au sector.
+Laptopul pe care rulează serverul nu are nevoie de cheie. Alt laptop (panou secundar):
+`http://<IP-laptop>:8000/?key=<cheia>`; cheia e în `data/access_key.txt` sau în `ACCESS_KEY` din `.env`.
 
-## Detecția pe scurt
+## Ce detectează
 
-- **YOLO** (`models/best.pt`, YOLO11n antrenat de noi pe cele 31 de clase ale setului FOD-A: șurub, piuliță, cheie,
-  clește, baterie, piatră, etichetă…; vezi `training/README.md`). Riscul: plasticul, etichetele, lemnul și banda
-  sunt **mediu**, restul (metal, unelte, pietre) **critic**. Fără `best.pt` se folosește `yolo11n.pt` pre-antrenat,
-  marcat **provizoriu** în bara de stare.
-- **Modelul general** (`models/general.pt`, YOLOE cu vocabular deschis) găsește ce nu e în FOD-A: **păsări (și moarte)**,
-  câini, pisici, vulpi, iepuri, bucăți de anvelopă, bagaje, pungi și sticle de plastic, cutii, mănuși. Lista e în
-  `app/vision/types.py` (`GENERAL_PROMPTS`, în engleză); după ce o schimbați: `python scripts\build_general_model.py`.
-  Păsările și animalele au risc **critic**.
-- **Detecția schimbărilor** față de pista curată (butonul **Pista e curată acum**) prinde orice alt obiect, ca „obiect necunoscut”.
-  Așa nimic nu scapă, nici ce nu știe niciun model.
-- **Persistență:** alerta pornește doar după `PERSIST_FRAMES` cadre aproape în același loc: mâna care pune obiectul nu dă alarmă.
-- **Obiect mare** (peste `MAX_AREA_PX`): eveniment separat „Vehicul / obiect mare pe pistă”, fără ecran roșu.
-- **Ce nu dă alarmă:** umbrele și schimbările de lumină (se compară cât s-a schimbat zona față de asfaltul din jur),
-  tremurul camerei de un pixel, ce intră pe la marginea imaginii. Cât timp un braț sau un vehicul intră în cadru,
-  nu se confirmă nimic nou; obiectul lăsat apare la ~0,5 s după ce mâna a ieșit.
-- **Alarmă falsă:** zona e învățată ca fundal și nu mai declanșează alerta. Dacă alerta venea doar de la YOLO
-  (un marcaj sau o lumină luată drept obiect), zona se păstrează și după repornire (`data/ignored_zones.json`);
-  un obiect nou căzut acolo dă alertă în continuare, iar o calibrare nouă golește lista.
-- Reglaj live (doar cu `DEMO_MODE=true`): **Mai mult → Reglaj detecție**.
+- **Modelul FOD** (`backend/models/best.pt`, YOLO11n antrenat de noi pe cele 31 de clase ale setului FOD-A):
+  șuruburi, piulițe, șaibe, chei, clești, ciocane, baterii, cuie, sârmă, pietre, etichete, bucăți de plastic…
+- **Modelul general** (`backend/models/general.pt`, YOLOE cu vocabular deschis): **păsări, și moarte**, câini,
+  pisici, vulpi, iepuri, bucăți de anvelopă, bagaje, pungi și sticle de plastic, cutii, mănuși. Lista e în
+  `backend/app/vision/types.py` (`GENERAL_PROMPTS`, în engleză); după o schimbare:
+  `venv\Scripts\python backend\scripts\build_general_model.py`.
+- **Persoane** pe pistă (incursiune), tot prin modelul general: alertă critică; o persoană aproape de cameră apare
+  ca „Persoană pe pistă” în locul lui „Obiect mare pe pistă”.
+- **Detecția schimbărilor** față de pista curată prinde orice alt obiect, ca „obiect necunoscut”, deci nimic nu
+  scapă, nici ce nu cunoaște niciun model.
 
-## Opriri din `.env`
+**Severitatea pentru aeronavă** e în `backend/app/services/severity.json`: pentru fiecare tip de obiect, un nivel
+de la 1 (neglijabil) la 5 (catastrofal), pericolele (ingestie în motor, tăierea anvelopei, lovirea structurii,
+coliziune, atragerea păsărilor…), motivul, acțiunea recomandată și timpul maxim până la eliminare. Din nivel
+vine riscul afișat: 4–5 **critic** (metal, unelte, pietre, baterii, animale, persoane, bucăți de anvelopă),
+1–3 **mediu** (plastic, hârtie, lemn, bandă); un obiect necunoscut e „de verificat” (critic dacă e mare).
+Fișierul se poate modifica fără cod; un test verifică că fiecare clasă are o intrare.
 
-| Setare | Efect |
-|---|---|
-| `ENABLE_YOLO=false` | Doar detecția schimbărilor (nu are nevoie de model) |
-| `ENABLE_SUPABASE=false` sau `USE_LOCAL_DATA=true` | Fără Supabase: doar copia de pe laptop (`data/runwayeye.db` + poze în `data/images/`) |
-| `ENABLE_GENERAL_MODEL=false` | Fără modelul general (păsări, animale…): mai rapid pe laptopuri slabe |
-| `ENABLE_CLAUDE=false` | Fără descrierea AI (bonus) |
-| `DEMO_MODE=false` | Mod prezentare: fără panou de reglaj și fără mesaje tehnice |
-| `DEMO_FAKE_DETECTIONS=true` | Detecții false la ~15 s, ca să arătați panoul fără cameră |
+**Ce nu dă alarmă:** mâna care pune obiectul (alerta pornește după ce mâna a ieșit), umbrele și schimbările de
+lumină, tremurul camerei, ce intră pe la marginea imaginii, marcajele pistei. Un vehicul sau un obiect mare apare
+separat, ca „Obiect mare pe pistă”. **Alarmă falsă** învață zona, inclusiv după repornire.
 
-## Supabase: baza de date centrală
+## Testare
 
-Tabelele `cameras`, `incidents`, `incident_events` și bucket-ul `fod-images` (pozele). Fiecare laptop cu cameră
-trimite incidentele lui și primește, la ~10 s, incidentele celorlalte camere: istoricul (`/incidents`) arată tot
-aeroportul, cu pozele din Supabase Storage.
-
-**De ce și o copie pe laptop:** alerta pentru un obiect pe pistă nu are voie să aștepte internetul. Incidentul se
-scrie întâi pe disc (câteva milisecunde), ecranul roșu și telefonul echipei pornesc imediat, iar în 1–2 secunde
-rândul și pozele sunt în Supabase. Dacă pică rețeaua, bara de stare arată „N în coadă” și totul pleacă la revenire.
-
-1. Proiect nou: Supabase → SQL Editor → conținutul lui `supabase/schema.sql` → Run. Proiectul existent:
-   fișierele din `supabase/migrations/`.
-2. În `.env`: `SUPABASE_URL` și `SUPABASE_KEY` = cheia **secretă** (Project Settings → API Keys → Secret keys,
-   `sb_secret_…`, sau cheia veche `service_role`). Cheia publică (`sb_publishable_…`) nu poate scrie: tabelele au
-   RLS fără politici, deci doar serverul are acces. Cheia rămâne pe laptop; browserul nu vorbește cu Supabase.
-3. `python scripts\demo_check.py` verifică cheia, citirea și scrierea.
-
-Fără URL și cheie (de exemplu pe un laptop nou), aplicația merge la fel, doar cu datele de pe laptop.
-
-## Descrierea AI (opțional)
-
-Cu `ENABLE_CLAUDE=true` și `ANTHROPIC_API_KEY` în `.env`, fiecare incident nou primește în câteva secunde o propoziție
-scrisă de Claude pe baza pozei decupate („Un șurub metalic pe axul pistei…”). Apare pe card, în detalii și în cronologie.
-Rulează în fundal: fără internet alerta pleacă la fel, doar fără descriere.
-
-## Cum demonstrăm că merge
-
-Patru niveluri, de la cel mai rapid la cel care contează pentru juriu.
-
-**1. Teste automate** (secunde): `venv\Scripts\python -m pytest`. Logica de detecție, ciclul incidentului, API-ul.
-
-**2. Scenarii grele, generate** (~3 min): pistă desenată în care știm exact când și unde cade fiecare obiect.
+**Imagini pe care modelul nu le-a văzut** (`samples/fod-a-test/`, 93 de imagini, numele fișierului e clasa):
 
 ```powershell
-python scripts\make_eval_set.py                                     # 10 clipuri în data/eval_synthetic/
-python scripts\evaluate.py --dir data\eval_synthetic --no-yolo
+venv\Scripts\python backend\scripts\test_samples.py   # tabel + planșă în data\samples_result\
 ```
 
-Testează umbre peste marcaje, lumină care crește lent sau brusc, un vehicul care oprește pe pistă, cameră cu
-zgomot și tremur, obiecte mici sau închise la culoare și o mână care trece fără să lase nimic. Sunt bune ca să
-arătați că sistemul nu dă alarme la astea, dar cifrele **nu** sunt pentru slide (raportul o și spune).
+Rezultatele modelului din repo (20 de epoci pe un GTX 1650 Ti, 31 octombrie 2026), pe setul de test FOD-A:
 
-**3. Modelul YOLO pe imagini pe care nu le-a văzut** (secunde):
-
-```powershell
-python scripts\test_samples.py      # 93 de imagini din samples/fod-a-test → data/samples_result/
-```
-
-Imaginile sunt din setul de **test** FOD-A (3 pe clasă), separat de antrenare pe blocuri de cadre, deci fără
-„aproape-copii” în train. Scriptul folosește exact detectorul aplicației și face `summary.md` (obiect găsit,
-clasă exactă, risc corect) și `sheet.jpg`, o planșă cu toate imaginile (verde = clasă corectă). Cifrele pe tot
-setul de test (2.917 imagini: mAP50, mAP50-95, precizie, recall, pe fiecare clasă) sunt în `models/metrics.json`,
-iar graficele pentru slide (curbele de antrenare, matricea de confuzie, curba precizie-recall, exemple) în
-`models/report/`. Refacerea modelului: `training/README.md`.
-
-Rezultatele modelului din repo (YOLO11n, 20 de epoci pe un GTX 1650 Ti, 31 octombrie 2026):
-
-| Set de test FOD-A (2.917 imagini, nevăzute la antrenare) | Valoare |
+| Set de test (2.917 imagini, nevăzute la antrenare) | Valoare |
 |---|---|
 | mAP50 / mAP50-95 | 0,994 / 0,883 |
 | Precizie / recall | 0,991 / 0,994 |
 | Cele mai grele clase (mAP50-95) | cui 0,61 · cheie fixă 0,68 · șurub cu piuliță 0,71 |
-| `scripts\test_samples.py` (93 de imagini, 3 pe clasă) | 93/93 clasă exactă |
+| `test_samples.py` (93 de imagini) | 93/93 clasă exactă |
 
-**Ce înseamnă și ce nu:** imaginile de test sunt din aceleași ~55 de clipuri FOD-A (alte momente, fără cadre
-vecine), deci pe același tip de asfalt și de aproape. Pe macheta voastră, cu camera sus și obiecte mici, cifrele
-vor fi mai mici: pentru juriu contează nivelul 4 de mai jos, măsurat pe clipurile voastre. Modelul general
-(păsări, animale) nu e antrenat de noi; l-am verificat pe câteva fotografii (pasăre vie și moartă pe asfalt),
-nu pe un set de test, iar uneori confundă un șurub cu șaibă cu o pasăre (vezi `CombinedDetector`).
+Detaliile sunt în `backend/models/metrics.json`, iar graficele pentru slide în `backend/models/report/`.
+Imaginile de test vin din aceleași clipuri FOD-A (alte momente, fără cadre vecine), filmate de aproape. Pe alt
+asfalt și de la altă distanță modelul greșește mai des: pe pista desenată din clipul demo recunoaște sigur doze,
+cutere, baterii, clești, ciocane, șurubelnițe, dar confundă cheile reglabile, unele șuruburi și pietrele. Pentru
+o cameră reală, modelul se reantrenează cu câteva sute de cadre filmate de ea (`backend/training/README.md`);
+până atunci, detecția schimbărilor prinde oricum obiectul, ca „necunoscut”. Modelul general nu e antrenat de noi;
+l-am verificat pe câteva fotografii (pasăre vie și moartă pe asfalt, persoane), nu pe un set de test.
 
-**4. Clipuri reale cu macheta: cifrele pentru juriu.** Cu camera fixă, în locul și lumina de la prezentare:
-
-| Clip | Ce faceți |
-|---|---|
-| 3–4 clipuri de 1–2 min | lăsați câte 2–3 obiecte diferite, în sectoare diferite, unul ridicat după un timp |
-| 1 clip | lumina se aprinde / se stinge, apoi cade un obiect |
-| 1 clip | cineva trece prin fața lămpii (umbră) și o mână trece peste pistă fără să lase nimic |
-| 1 clip de 5 min | pistă goală: din el iese rata de alarme false pe oră |
-
-Primele 2 secunde din fiecare clip arată pista curată. Puneți clipurile în `data/eval/`, apoi:
+**Clipuri video** (cifrele care contează): filmați cu camera fixă clipuri în care lăsați obiecte pe pistă (primele
+2 secunde cu pista goală), puneți-le în `data\eval\`, apoi:
 
 ```powershell
-python scripts\annotate_clip.py data\eval\macheta_01.mp4   # momentul și zona fiecărui obiect
-python scripts\evaluate.py                                 # rata de detecție, alarme false/oră, timp până la alertă
+venv\Scripts\python backend\scripts\annotate_clip.py data\eval\macheta_01.mp4   # momentul și zona fiecărui obiect
+venv\Scripts\python backend\scripts\evaluate.py      # rata de detecție, alarme false pe oră, timp până la alertă
 ```
 
-Rezultatul e în `data/eval/summary.md`, cu un tabel pe clipuri. Pe slide: rata de detecție, alarmele false pe oră,
-timpul până la alertă și mAP-ul din `models/metrics.json`, cu numărul de clipuri și minute din care au ieșit.
+Fără clipuri filmate: `backend\scripts\make_eval_set.py` desenează 10 scenarii grele (umbre, lumină, vehicul,
+zgomot, mână fără obiect), apoi `evaluate.py --dir data\eval_synthetic`. Sunt bune ca dovadă că sistemul nu dă
+alarme la ele, nu pentru cifre.
 
-## Demonstrația în fața juriului (~5 minute)
+**Înainte de prezentare:** `venv\Scripts\python backend\scripts\demo_check.py` verifică camera, modelele,
+calibrarea, Supabase, serverul și firewall-ul, și spune ce de făcut pentru fiecare problemă.
 
-Înainte: `python scripts\demo_check.py`, camera fixată pe machetă, **Pista e curată acum**, telefonul echipei
-deschis prin codul QR și **Activează alertele** apăsat.
-
-1. **Live:** lăsați un obiect pe machetă → în ~1 s ecran roșu și sunet pe panou, alertă pe telefon cu sectorul
-   și distanța pe pistă. Pe telefon: **Am preluat** → **Obiect eliminat**; incidentul apare în `/incidents`.
+**Demonstrația pentru juriu (~5 minute):**
+1. **Live:** clipul demo (sau macheta cu camera) → la fiecare obiect lăsat, ecran roșu și sunet pe panou, alertă pe
+   telefon cu severitatea; pe telefon **Am preluat** → **Obiect eliminat**; incidentul apare în **Istoric** și în Supabase.
 2. **Ce nu dă alarmă:** treceți mâna peste pistă fără să lăsați nimic, faceți umbră, aprindeți o lampă.
-3. **Modelul pe imagini noi:** `/upload` → trageți 2–3 poze din `samples/fod-a-test/` (numele fișierului e
-   clasa adevărată) → chenarul, clasa în română, încrederea și riscul.
-4. **Cifrele:** `data/samples_result/sheet.jpg` și `summary.md` (de la `test_samples.py`), `models/metrics.json`
-   (setul de test complet) și, dacă ați filmat clipurile, `data/eval/summary.md`.
+3. **Modelul:** **Test** → 2–3 poze din `samples\fod-a-test\` și o fotografie cu o pasăre.
+4. **Cifrele:** tabelul de mai sus, `data\samples_result\sheet.jpg` și, cu clipuri filmate, `data\eval\summary.md`.
 
-Fără cameră: pasul 1 merge pe clipul demo (sau cu `DEMO_FAKE_DETECTIONS=true`), restul la fel.
+## Supabase: baza de date centrală
+
+Tabelele `cameras`, `incidents`, `incident_events` și bucket-ul `fod-images` (pozele). Fiecare laptop trimite
+incidentele lui și primește, la ~10 s, incidentele celorlalte camere, deci **Istoric** arată tot aeroportul.
+Alerta nu așteaptă internetul: incidentul se scrie întâi pe laptop, iar în 1–2 secunde ajunge în Supabase; fără
+rețea, bara de jos arată „N în coadă” și totul pleacă la revenire.
+
+1. Proiect nou: Supabase → SQL Editor → conținutul lui `backend/supabase/schema.sql` → Run.
+   Proiectul existent: fișierele din `backend/supabase/migrations/`.
+2. În `.env`: `SUPABASE_URL` și `SUPABASE_KEY` = cheia **secretă** (Project Settings → API Keys → Secret keys,
+   `sb_secret_…`). Cheia publică (`sb_publishable_…`) nu poate scrie. Cheia rămâne pe laptop.
+
+Fără URL și cheie, aplicația merge la fel, cu datele doar pe laptop.
+
+## Setări (`.env`)
+
+| Setare | Ce face |
+|---|---|
+| `VIDEO_SOURCE` | Sursa la prima pornire (apoi pagina **Sursă**): `data/videos/…mp4` clip · `0`, `1`… camera web · `rtsp://…` cameră IP · `http://<ip-telefon>:8080/video` telefon cu „IP Webcam” |
+| `FALLBACK_VIDEO` | Clipul folosit când sursa nu răspunde (puneți aici un clip filmat cu macheta) |
+| `RUNWAY_LENGTH_M`, `RUNWAY_WIDTH_M`, `MOCKUP_*_CM` | Dimensiunile pistei și ale machetei, pentru metri și mărimea obiectelor |
+| `ENABLE_GENERAL_MODEL=false` | Fără modelul general (păsări, animale…): mai rapid pe laptopuri slabe |
+| `ENABLE_YOLO=false` | Doar detecția schimbărilor |
+| `ENABLE_SUPABASE=false` | Datele doar pe laptop |
+| `ENABLE_CLAUDE=true` + `ANTHROPIC_API_KEY` | O propoziție scrisă de Claude la fiecare incident (opțional) |
+| `DEMO_MODE=false` | Mod prezentare: fără panoul de reglaj și fără mesaje tehnice |
+| `DEMO_FAKE_DETECTIONS=true` | Alerte de test la ~15 s, ca să arătați panoul fără cameră |
+
+## Structura proiectului
+
+```
+backend/            serverul (Python, FastAPI)
+  app/              vision/ (detecție, calibrare), services/ (incidente, risc + severity.json, Supabase, telefoane), routers/ (pagini, API)
+  models/           best.pt (FOD-A), general.pt (păsări, animale…), metrics.json, report/ (grafice)
+  scripts/          setup, demo_check, test_samples, evaluate, make_demo_clip…
+  tests/            teste automate
+  training/         pregătirea setului FOD-A și antrenarea (vezi training/README.md)
+  supabase/         schema bazei de date
+frontend/           interfața: templates/ (pagini), static/ (CSS, JS, fonturi, sunet)
+samples/            imagini de test pentru demonstrație
+data/               creat la rulare: incidente, poze, calibrare, clipul demo (nu intră în git)
+```
 
 ## Dezvoltare
 
 ```powershell
-venv\Scripts\python -m pytest        # teste pe cadre sintetice + API
-npm run css:watch                    # recompilează CSS-ul la modificarea șabloanelor
-python scripts\browser_check.py http://127.0.0.1:8000/ panou.png --wait 4   # captură headless
+venv\Scripts\python -m pytest backend               # testele automate
+cd frontend; npm install; npm run css:watch          # doar dacă schimbați paginile (recompilează static\css\app.css)
 ```
 
-`npm install` e nevoie doar dacă modificați șabloanele (recompilează `app/static/css/app.css`, care e în repo).
-
-Structura: `app/vision/` (captură, detecție, fuziune, calibrare, desenare), `app/services/` (incidente, risc,
-date, SSE, telefonul echipei), `app/routers/`, `app/templates/`, `scripts/`, `tests/`, `training/` (pregătirea
-FOD-A, antrenarea locală și în Colab), `samples/` (imagini de test pentru demonstrație).
+Serverul pornit manual: `set PYTHONPATH=backend` și `venv\Scripts\python -m app` (din folderul proiectului).
 
 ## Probleme frecvente
 
-- **Imagine neagră / puține cadre pe secundă:** camera are nevoie de lumină (lampă pe machetă); verificați indexul camerei.
-- **Alarme la umbre:** lumină constantă, apoi **Pista e curată acum**; măriți pragul din **Reglaj**.
-- **Telefonul nu se conectează:** aceeași rețea, regula de firewall, `HOST=0.0.0.0`; `demo_check.py` verifică toate trei.
+- **Imagine neagră sau puține cadre pe secundă:** camera are nevoie de lumină; verificați `VIDEO_SOURCE`.
+- **Alarme la umbre:** lumină constantă, apoi **Pista e curată acum**.
+- **Telefonul nu se conectează:** vezi „Telefonul echipei” mai sus (hotspotul laptopului rezolvă aproape mereu).
 - **Fără sunet pe panou:** clic oriunde în pagină sau pe **Activează sunetul**.
-- **Un obiect ridicat lasă o alertă „necunoscut”:** se întâmplă dacă obiectul era pe pistă când s-a învățat referința.
-  Apăsați **Alarmă falsă** (zona se învață) sau **Pista e curată acum** cu pista goală.
+- **Un obiect ridicat lasă o alertă „necunoscut”:** obiectul era pe pistă când s-a apăsat **Pista e curată acum**:
+  **Alarmă falsă** sau, cu pista goală, din nou **Pista e curată acum**.

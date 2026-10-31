@@ -1,0 +1,653 @@
+{
+ "adjustable_clamp_014456.jpg": {
+  "class_key": "adjustable_clamp",
+  "x": 128,
+  "y": 191,
+  "w": 73,
+  "h": 104
+ },
+ "adjustable_clamp_014466.jpg": {
+  "class_key": "adjustable_clamp",
+  "x": 123,
+  "y": 226,
+  "w": 71,
+  "h": 73
+ },
+ "adjustable_clamp_014476.jpg": {
+  "class_key": "adjustable_clamp",
+  "x": 143,
+  "y": 0,
+  "w": 56,
+  "h": 75
+ },
+ "adjustable_wrench_015864.jpg": {
+  "class_key": "adjustable_wrench",
+  "x": 128,
+  "y": 194,
+  "w": 97,
+  "h": 105
+ },
+ "adjustable_wrench_015873.jpg": {
+  "class_key": "adjustable_wrench",
+  "x": 140,
+  "y": 224,
+  "w": 78,
+  "h": 75
+ },
+ "adjustable_wrench_015882.jpg": {
+  "class_key": "adjustable_wrench",
+  "x": 161,
+  "y": 255,
+  "w": 54,
+  "h": 44
+ },
+ "battery_000141.jpg": {
+  "class_key": "battery",
+  "x": 27,
+  "y": 121,
+  "w": 24,
+  "h": 82
+ },
+ "battery_000184.jpg": {
+  "class_key": "battery",
+  "x": 73,
+  "y": 220,
+  "w": 17,
+  "h": 63
+ },
+ "battery_000227.jpg": {
+  "class_key": "battery",
+  "x": 196,
+  "y": 196,
+  "w": 13,
+  "h": 49
+ },
+ "bolt_001181.jpg": {
+  "class_key": "bolt",
+  "x": 245,
+  "y": 0,
+  "w": 32,
+  "h": 106
+ },
+ "bolt_005502.jpg": {
+  "class_key": "bolt",
+  "x": 157,
+  "y": 146,
+  "w": 25,
+  "h": 20
+ },
+ "bolt_012456.jpg": {
+  "class_key": "bolt",
+  "x": 230,
+  "y": 139,
+  "w": 14,
+  "h": 41
+ },
+ "bolt_nut_set_016928.jpg": {
+  "class_key": "bolt_nut_set",
+  "x": 143,
+  "y": 0,
+  "w": 29,
+  "h": 63
+ },
+ "bolt_nut_set_016939.jpg": {
+  "class_key": "bolt_nut_set",
+  "x": 173,
+  "y": 65,
+  "w": 28,
+  "h": 72
+ },
+ "bolt_nut_set_016950.jpg": {
+  "class_key": "bolt_nut_set",
+  "x": 175,
+  "y": 134,
+  "w": 29,
+  "h": 71
+ },
+ "bolt_washer_001241.jpg": {
+  "class_key": "bolt_washer",
+  "x": 126,
+  "y": 125,
+  "w": 41,
+  "h": 32
+ },
+ "bolt_washer_001268.jpg": {
+  "class_key": "bolt_washer",
+  "x": 117,
+  "y": 217,
+  "w": 73,
+  "h": 53
+ },
+ "bolt_washer_001645.jpg": {
+  "class_key": "bolt_washer",
+  "x": 133,
+  "y": 121,
+  "w": 28,
+  "h": 34
+ },
+ "clamp_part_002278.jpg": {
+  "class_key": "clamp_part",
+  "x": 131,
+  "y": 92,
+  "w": 46,
+  "h": 91
+ },
+ "clamp_part_002770.jpg": {
+  "class_key": "clamp_part",
+  "x": 190,
+  "y": 0,
+  "w": 51,
+  "h": 83
+ },
+ "clamp_part_002788.jpg": {
+  "class_key": "clamp_part",
+  "x": 240,
+  "y": 156,
+  "w": 56,
+  "h": 113
+ },
+ "cutter_003066.jpg": {
+  "class_key": "cutter",
+  "x": 143,
+  "y": 81,
+  "w": 53,
+  "h": 79
+ },
+ "cutter_003109.jpg": {
+  "class_key": "cutter",
+  "x": 142,
+  "y": 78,
+  "w": 55,
+  "h": 81
+ },
+ "cutter_003318.jpg": {
+  "class_key": "cutter",
+  "x": 149,
+  "y": 186,
+  "w": 81,
+  "h": 113
+ },
+ "fuel_cap_011549.jpg": {
+  "class_key": "fuel_cap",
+  "x": 38,
+  "y": 185,
+  "w": 70,
+  "h": 114
+ },
+ "fuel_cap_011559.jpg": {
+  "class_key": "fuel_cap",
+  "x": 0,
+  "y": 133,
+  "w": 63,
+  "h": 119
+ },
+ "fuel_cap_011569.jpg": {
+  "class_key": "fuel_cap",
+  "x": 14,
+  "y": 21,
+  "w": 64,
+  "h": 111
+ },
+ "hammer_019119.jpg": {
+  "class_key": "hammer",
+  "x": 123,
+  "y": 95,
+  "w": 32,
+  "h": 151
+ },
+ "hammer_019141.jpg": {
+  "class_key": "hammer",
+  "x": 107,
+  "y": 0,
+  "w": 73,
+  "h": 298
+ },
+ "hammer_019321.jpg": {
+  "class_key": "hammer",
+  "x": 185,
+  "y": 71,
+  "w": 104,
+  "h": 228
+ },
+ "hose_014135.jpg": {
+  "class_key": "hose",
+  "x": 110,
+  "y": 0,
+  "w": 128,
+  "h": 180
+ },
+ "hose_014139.jpg": {
+  "class_key": "hose",
+  "x": 109,
+  "y": 0,
+  "w": 128,
+  "h": 186
+ },
+ "hose_014143.jpg": {
+  "class_key": "hose",
+  "x": 108,
+  "y": 0,
+  "w": 128,
+  "h": 193
+ },
+ "label_020071.jpg": {
+  "class_key": "label",
+  "x": 182,
+  "y": 226,
+  "w": 110,
+  "h": 73
+ },
+ "label_020105.jpg": {
+  "class_key": "label",
+  "x": 62,
+  "y": 3,
+  "w": 223,
+  "h": 242
+ },
+ "label_020139.jpg": {
+  "class_key": "label",
+  "x": 122,
+  "y": 140,
+  "w": 35,
+  "h": 31
+ },
+ "luggage_part_020373.jpg": {
+  "class_key": "luggage_part",
+  "x": 85,
+  "y": 60,
+  "w": 106,
+  "h": 140
+ },
+ "luggage_part_020940.jpg": {
+  "class_key": "luggage_part",
+  "x": 131,
+  "y": 94,
+  "w": 56,
+  "h": 105
+ },
+ "luggage_part_020956.jpg": {
+  "class_key": "luggage_part",
+  "x": 134,
+  "y": 139,
+  "w": 20,
+  "h": 38
+ },
+ "luggage_tag_005632.jpg": {
+  "class_key": "luggage_tag",
+  "x": 164,
+  "y": 102,
+  "w": 25,
+  "h": 14
+ },
+ "luggage_tag_005677.jpg": {
+  "class_key": "luggage_tag",
+  "x": 153,
+  "y": 126,
+  "w": 25,
+  "h": 14
+ },
+ "luggage_tag_020394.jpg": {
+  "class_key": "luggage_tag",
+  "x": 149,
+  "y": 107,
+  "w": 19,
+  "h": 70
+ },
+ "metal_part_002425.jpg": {
+  "class_key": "metal_part",
+  "x": 59,
+  "y": 148,
+  "w": 42,
+  "h": 77
+ },
+ "metal_part_022268.jpg": {
+  "class_key": "metal_part",
+  "x": 242,
+  "y": 132,
+  "w": 57,
+  "h": 66
+ },
+ "metal_part_022445.jpg": {
+  "class_key": "metal_part",
+  "x": 58,
+  "y": 199,
+  "w": 37,
+  "h": 66
+ },
+ "metal_sheet_013757.jpg": {
+  "class_key": "metal_sheet",
+  "x": 106,
+  "y": 73,
+  "w": 106,
+  "h": 182
+ },
+ "metal_sheet_013763.jpg": {
+  "class_key": "metal_sheet",
+  "x": 105,
+  "y": 85,
+  "w": 105,
+  "h": 183
+ },
+ "metal_sheet_013769.jpg": {
+  "class_key": "metal_sheet",
+  "x": 105,
+  "y": 99,
+  "w": 107,
+  "h": 184
+ },
+ "nail_006962.jpg": {
+  "class_key": "nail",
+  "x": 162,
+  "y": 224,
+  "w": 12,
+  "h": 7
+ },
+ "nail_006986.jpg": {
+  "class_key": "nail",
+  "x": 163,
+  "y": 215,
+  "w": 10,
+  "h": 7
+ },
+ "nail_007103.jpg": {
+  "class_key": "nail",
+  "x": 175,
+  "y": 233,
+  "w": 12,
+  "h": 9
+ },
+ "nut_012729.jpg": {
+  "class_key": "nut",
+  "x": 160,
+  "y": 1,
+  "w": 14,
+  "h": 30
+ },
+ "nut_012766.jpg": {
+  "class_key": "nut",
+  "x": 141,
+  "y": 124,
+  "w": 14,
+  "h": 26
+ },
+ "nut_023090.jpg": {
+  "class_key": "nut",
+  "x": 192,
+  "y": 158,
+  "w": 26,
+  "h": 45
+ },
+ "paint_chip_024337.jpg": {
+  "class_key": "paint_chip",
+  "x": 104,
+  "y": 162,
+  "w": 114,
+  "h": 137
+ },
+ "paint_chip_024360.jpg": {
+  "class_key": "paint_chip",
+  "x": 0,
+  "y": 0,
+  "w": 111,
+  "h": 169
+ },
+ "paint_chip_024657.jpg": {
+  "class_key": "paint_chip",
+  "x": 105,
+  "y": 118,
+  "w": 79,
+  "h": 87
+ },
+ "pen_025122.jpg": {
+  "class_key": "pen",
+  "x": 121,
+  "y": 135,
+  "w": 21,
+  "h": 82
+ },
+ "pen_025135.jpg": {
+  "class_key": "pen",
+  "x": 95,
+  "y": 19,
+  "w": 80,
+  "h": 278
+ },
+ "pen_025148.jpg": {
+  "class_key": "pen",
+  "x": 114,
+  "y": 0,
+  "w": 69,
+  "h": 277
+ },
+ "plastic_part_004458.jpg": {
+  "class_key": "plastic_part",
+  "x": 135,
+  "y": 129,
+  "w": 71,
+  "h": 30
+ },
+ "plastic_part_026209.jpg": {
+  "class_key": "plastic_part",
+  "x": 126,
+  "y": 113,
+  "w": 46,
+  "h": 82
+ },
+ "plastic_part_026390.jpg": {
+  "class_key": "plastic_part",
+  "x": 133,
+  "y": 81,
+  "w": 56,
+  "h": 103
+ },
+ "pliers_007913.jpg": {
+  "class_key": "pliers",
+  "x": 40,
+  "y": 26,
+  "w": 95,
+  "h": 64
+ },
+ "pliers_008363.jpg": {
+  "class_key": "pliers",
+  "x": 121,
+  "y": 102,
+  "w": 42,
+  "h": 27
+ },
+ "pliers_017908.jpg": {
+  "class_key": "pliers",
+  "x": 122,
+  "y": 58,
+  "w": 80,
+  "h": 110
+ },
+ "rock_027795.jpg": {
+  "class_key": "rock",
+  "x": 79,
+  "y": 196,
+  "w": 21,
+  "h": 40
+ },
+ "rock_027817.jpg": {
+  "class_key": "rock",
+  "x": 96,
+  "y": 83,
+  "w": 18,
+  "h": 38
+ },
+ "rock_028357.jpg": {
+  "class_key": "rock",
+  "x": 139,
+  "y": 156,
+  "w": 23,
+  "h": 37
+ },
+ "screw_028381.jpg": {
+  "class_key": "screw",
+  "x": 78,
+  "y": 93,
+  "w": 132,
+  "h": 105
+ },
+ "screw_028385.jpg": {
+  "class_key": "screw",
+  "x": 80,
+  "y": 96,
+  "w": 128,
+  "h": 102
+ },
+ "screw_028389.jpg": {
+  "class_key": "screw",
+  "x": 84,
+  "y": 106,
+  "w": 125,
+  "h": 98
+ },
+ "screwdriver_028805.jpg": {
+  "class_key": "screwdriver",
+  "x": 106,
+  "y": 36,
+  "w": 92,
+  "h": 261
+ },
+ "screwdriver_028827.jpg": {
+  "class_key": "screwdriver",
+  "x": 98,
+  "y": 0,
+  "w": 88,
+  "h": 299
+ },
+ "screwdriver_029005.jpg": {
+  "class_key": "screwdriver",
+  "x": 80,
+  "y": 57,
+  "w": 137,
+  "h": 179
+ },
+ "soda_can_029800.jpg": {
+  "class_key": "soda_can",
+  "x": 133,
+  "y": 146,
+  "w": 25,
+  "h": 46
+ },
+ "soda_can_029822.jpg": {
+  "class_key": "soda_can",
+  "x": 125,
+  "y": 133,
+  "w": 29,
+  "h": 57
+ },
+ "soda_can_030258.jpg": {
+  "class_key": "soda_can",
+  "x": 85,
+  "y": 152,
+  "w": 47,
+  "h": 77
+ },
+ "tape_030564.jpg": {
+  "class_key": "tape",
+  "x": 107,
+  "y": 19,
+  "w": 45,
+  "h": 86
+ },
+ "tape_030566.jpg": {
+  "class_key": "tape",
+  "x": 102,
+  "y": 22,
+  "w": 45,
+  "h": 84
+ },
+ "tape_030568.jpg": {
+  "class_key": "tape",
+  "x": 105,
+  "y": 42,
+  "w": 46,
+  "h": 86
+ },
+ "washer_009460.jpg": {
+  "class_key": "washer",
+  "x": 204,
+  "y": 270,
+  "w": 7,
+  "h": 12
+ },
+ "washer_009599.jpg": {
+  "class_key": "washer",
+  "x": 148,
+  "y": 73,
+  "w": 5,
+  "h": 11
+ },
+ "washer_016586.jpg": {
+  "class_key": "washer",
+  "x": 97,
+  "y": 143,
+  "w": 71,
+  "h": 122
+ },
+ "wire_029349.jpg": {
+  "class_key": "wire",
+  "x": 112,
+  "y": 121,
+  "w": 64,
+  "h": 73
+ },
+ "wire_031118.jpg": {
+  "class_key": "wire",
+  "x": 99,
+  "y": 11,
+  "w": 86,
+  "h": 136
+ },
+ "wire_032593.jpg": {
+  "class_key": "wire",
+  "x": 37,
+  "y": 73,
+  "w": 260,
+  "h": 150
+ },
+ "wood_033044.jpg": {
+  "class_key": "wood",
+  "x": 92,
+  "y": 85,
+  "w": 114,
+  "h": 132
+ },
+ "wood_033047.jpg": {
+  "class_key": "wood",
+  "x": 92,
+  "y": 93,
+  "w": 114,
+  "h": 132
+ },
+ "wood_033050.jpg": {
+  "class_key": "wood",
+  "x": 92,
+  "y": 102,
+  "w": 110,
+  "h": 128
+ },
+ "wrench_010512.jpg": {
+  "class_key": "wrench",
+  "x": 138,
+  "y": 230,
+  "w": 25,
+  "h": 29
+ },
+ "wrench_010851.jpg": {
+  "class_key": "wrench",
+  "x": 161,
+  "y": 110,
+  "w": 23,
+  "h": 29
+ },
+ "wrench_033189.jpg": {
+  "class_key": "wrench",
+  "x": 206,
+  "y": 133,
+  "w": 7,
+  "h": 74
+ }
+}

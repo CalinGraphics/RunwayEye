@@ -1,0 +1,22 @@
+{
+  "name": "runwayeye",
+  "private": true,
+  "version": "0.1.0",
+  "description": "RunwayEye front-end build (Tailwind CSS v4 + DaisyUI, vendored HTMX and Alpine.js)",
+  "scripts": {
+    "css": "tailwindcss -i static/css/input.css -o static/css/app.css --minify",
+    "css:watch": "tailwindcss -i static/css/input.css -o static/css/app.css --watch",
+    "vendor": "node scripts/copy_vendor.mjs",
+    "build": "npm run vendor && npm run css",
+    "postinstall": "npm run build"
+  },
+  "devDependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@tailwindcss/cli": "^4.1.0",
+    "alpinejs": "^3.14.0",
+    "daisyui": "^5.0.0",
+    "htmx.org": "^2.0.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

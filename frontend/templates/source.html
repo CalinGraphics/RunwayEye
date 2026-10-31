@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}RunwayEye · Sursă video{% endblock %}
+{% block head %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("sourcePicker", () => ({
+      current: null,
+      clips: [],
+      cameras: null,
+      searching: false,
+      url: "",
+      message: "",
+      error: false,
+      busy: false,
+      stamp: Date.now(),
+
+      async init() {
+        await this.refresh();
+        setInterval(() => this.refresh(), 3000);
+      },
+      async refresh() {
+        try {
+          const r = await (await fetch("/api/sources")).json();
+          this.current = r.current;
+          this.clips = r.clips;
+        } catch {}
+      },
+      say(text, error = false) {
+        this.message = text;
+        this.error = error;
+      },
+      async use(source) {
+        this.busy = true;
+        try {
+          this.say((await RE.post("/api/source", { source })).message);
+          setTimeout(() => (this.stamp = Date.now()), 1500);
+          await this.refresh();
+        } catch (e) {
+          this.say(e.message, true);
+        } finally {
+          this.busy = false;
+        }
+      },
+      async findCameras() {
+        this.searching = true;
+        try {
+          this.cameras = (await (await fetch("/api/sources/cameras")).json()).cameras;
+        } catch {
+          this.cameras = [];
+        } finally {
+          this.searching = false;
+        }
+      },
+      async test() {
+        this.busy = true;
+        try {
+          const r = await RE.post("/api/source/test", { source: this.url });
+          this.say(r.message, !r.ok);
+          return r.ok;
+        } catch (e) {
+          this.say(e.message, true);
+          return false;
+        } finally {
+          this.busy = false;
+        }
+      },
+      async connect() {
+        if (await this.test()) await this.use(this.url.trim());
+      },
+      async upload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        this.busy = true;
+        this.say(`Încarc ${file.name}…`);
+        const form = new FormData();
+        form.append("file", file);
+        try {
+          const res = await fetch("/api/source/upload", { method: "POST", body: form });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || "Încărcarea nu a reușit");
+          this.say(data.message);
+          setTimeout(() => (this.stamp = Date.now()), 1500);
+          await this.refresh();
+        } catch (err) {
+          this.say(err.message, true);
+        } finally {
+          this.busy = false;
+          e.target.value = "";
+        }
+      },
+      isCurrent(source) {
+        return this.current && this.current.source === source;
+      },
+    }));
+  });
+</script>
+{% endblock %}
+{% set active = "source" %}
+{% block page_title %}Sursă video{% endblock %}
+{% block content %}
+<main class="grid gap-4 p-4 sm:p-6 xl:grid-cols-[minmax(0,1fr)_380px]" x-data="sourcePicker()">
+  <section class="panel overflow-hidden">
+    <div class="panel-head">
+      <h2>Ce vede acum sistemul</h2>
+      <span class="readout text-xs" :class="current && current.connected ? 'text-success' : 'text-warning'"
+            x-text="current ? (current.connected ? current.label + ' · ' + current.fps + ' cadre/s' : (current.message || 'se conectează…')) : '…'"></span>
+    </div>
+    <div class="bg-black p-2 sm:p-3">
+      <img src="/video" alt="Imaginea video live, cu detecțiile" class="block w-full rounded-field">
+    </div>
+    <p x-show="message" x-cloak class="border-t border-line px-4 py-3 text-sm" :class="error ? 'text-error' : 'text-success'" x-text="message" role="status"></p>
+    <p class="border-t border-line px-4 py-3 text-sm text-base-content/60">
+      După schimbarea sursei, sistemul învață din nou pista curată (primele secunde). Dacă ați schimbat camera,
+      refaceți <a href="/calibrate" class="link link-primary">calibrarea</a>.
+    </p>
+  </section>
+
+  <aside class="space-y-4" :class="busy && 'pointer-events-none opacity-70'">
+    <div class="panel">
+      <div class="panel-head"><h2>Clip video</h2></div>
+      <div class="space-y-2 p-3">
+        <template x-for="c in clips" :key="c.source">
+          <div class="flex items-center gap-2 rounded-field border border-line px-3 py-2">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold" x-text="c.name"></p>
+              <p class="text-xs text-base-content/50" x-text="c.mb + ' MB'"></p>
+            </div>
+            <span x-show="c.in_use" class="badge badge-success badge-sm">în uz</span>
+            <button x-show="!c.in_use" class="btn btn-sm btn-primary" @click="use(c.source)">Folosește</button>
+          </div>
+        </template>
+        <p x-show="!clips.length" class="text-sm text-base-content/60">Niciun clip încă.</p>
+        <label class="btn btn-sm btn-ghost w-full border-line">
+          {{ icon("upload") }} Încarcă un clip de pe calculator
+          <input type="file" accept="video/*" class="sr-only" @change="upload($event)">
+        </label>
+        <p class="text-xs text-base-content/50">Clipul rulează în buclă, ca o cameră live. Primele secunde trebuie să arate pista goală.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Cameră de supraveghere (IP)</h2></div>
+      <div class="space-y-2 p-3">
+        <input type="text" x-model="url" class="input input-sm w-full font-mono" placeholder="rtsp://utilizator:parola@192.168.1.64:554/stream1"
+               aria-label="Adresa camerei" @keydown.enter="connect()">
+        <div class="flex gap-2">
+          <button class="btn btn-sm btn-ghost flex-1 border-line" @click="test()" :disabled="!url.trim()">Testează</button>
+          <button class="btn btn-sm btn-primary flex-1" @click="connect()" :disabled="!url.trim()">Conectează</button>
+        </div>
+        <ul class="space-y-1 text-xs text-base-content/55">
+          <li><span class="readout">rtsp://…</span> camere IP (Hikvision, Dahua, Axis…): adresa e în manualul camerei</li>
+          <li><span class="readout">http://&lt;ip-telefon&gt;:8080/video</span> telefon cu aplicația „IP Webcam”</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>Cameră web</h2></div>
+      <div class="space-y-2 p-3">
+        <button class="btn btn-sm btn-ghost w-full border-line" @click="findCameras()" :disabled="searching">
+          <span x-show="searching" class="loading loading-spinner loading-xs"></span>
+          <span x-text="searching ? 'Caut camerele…' : 'Caută camerele conectate'"></span>
+        </button>
+        <template x-for="i in cameras || []" :key="i">
+          <div class="flex items-center gap-2 rounded-field border border-line px-3 py-2">
+            <p class="flex-1 text-sm font-semibold" x-text="'Camera ' + i + (i === 0 ? ' (cea a laptopului)' : '')"></p>
+            <span x-show="isCurrent(String(i))" class="badge badge-success badge-sm">în uz</span>
+            <button x-show="!isCurrent(String(i))" class="btn btn-sm btn-primary" @click="use(String(i))">Folosește</button>
+          </div>
+        </template>
+        <p x-show="cameras && !cameras.length" class="text-sm text-base-content/60">Nicio cameră găsită.</p>
+      </div>
+    </div>
+  </aside>
+</main>
+{% endblock %}

@@ -1,0 +1,296 @@
+import cv2
+import numpy as np
+
+from app.vision.calibration import Calibration, RunwayGeometry
+from app.vision.engine import LargeObject, ObjectGone, ObjectReturned
+from app.vision.types import BBox
+from tests.synthetic import FakeYolo, Scene, incidents, learn, make_engine, run
+
+BOLT = (150, 110, 14, 10, 220)
+
+
+def test_static_object_detected_after_persist_frames():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    n = engine.params.persist_frames
+
+    early = run(engine, [scene.frame([BOLT]) for _ in range(n - 1)])
+    assert incidents(early) == []
+
+    late = run(engine, [scene.frame([BOLT])])
+    found = incidents(late)
+    assert len(found) == 1
+    det = found[0].detection
+    assert det.source == "change"
+    assert det.object_class == "obiect necunoscut"
+    assert det.risk == "de verificat"
+    assert det.bbox.contains(*det.center_px)
+    assert det.crop_jpeg_b64
+
+
+def test_thin_colored_object_is_detected():
+    # A paper clip: 2 px wide, coloured, about the same grey level as the asphalt.
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    events = []
+    for _ in range(12):
+        f = scene.frame()
+        f[100:102, 120:160] = (60, 60, 190)
+        f[100:112, 158:160] = (60, 60, 190)
+        f[110:112, 128:160] = (60, 60, 190)
+        events += engine.process(f).events
+    assert len(incidents(events)) == 1
+
+
+def test_moving_object_is_ignored():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    frames = [scene.frame([(10 + 16 * i, 100, 14, 10, 220)]) for i in range(18)]
+    assert incidents(run(engine, frames)) == []
+
+
+def test_hand_placing_object_gives_one_alert_and_no_large_alarm():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    # A big "hand" sweeps in, drops the bolt and leaves.
+    frames = [scene.frame([(20 + 12 * i, 60, 70, 60, 60)]) for i in range(10)]
+    frames += [scene.frame([BOLT]) for _ in range(20)]
+    events = run(engine, frames)
+    assert len(incidents(events)) == 1
+    assert not any(isinstance(e, LargeObject) for e in events)
+
+
+def test_slow_light_change_raises_no_alerts():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    events = []
+    for _ in range(300):
+        scene.brightness += 0.25
+        events.extend(engine.process(scene.frame()).events)
+    assert incidents(events) == []
+    assert not any(isinstance(e, LargeObject) for e in events)
+
+
+def test_object_outside_runway_mask_is_ignored():
+    geometry = RunwayGeometry(length_m=2500, width_m=45)
+    cal = Calibration([(100, 60), (100, 180), (300, 180), (300, 60)], (320, 240), geometry)
+    scene, engine = Scene(), make_engine(calibration=cal)
+    learn(engine, scene)
+
+    outside = run(engine, [scene.frame([(20, 20, 14, 10, 220)]) for _ in range(15)])
+    assert incidents(outside) == []
+
+    inside = run(engine, [scene.frame([(20, 20, 14, 10, 220), BOLT]) for _ in range(15)])
+    found = incidents(inside)
+    assert len(found) == 1
+    assert found[0].detection.sector is not None
+    assert found[0].detection.runway_distance_m is not None
+
+
+def test_no_duplicate_incidents():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+
+    events = run(engine, [scene.frame([BOLT]) for _ in range(100)])
+    # Short flicker (object hidden for a few frames) keeps the same incident.
+    events += run(engine, [scene.frame() for _ in range(3)])
+    events += run(engine, [scene.frame([BOLT]) for _ in range(30)])
+    assert len(incidents(events)) == 1
+    incident_id = incidents(events)[0].detection.id
+
+    # Picked up: incident marked "obiect dispărut"; put back in the same spot: same incident.
+    gone = run(engine, [scene.frame() for _ in range(engine.params.gone_frames + 2)])
+    assert [e.incident_id for e in gone if isinstance(e, ObjectGone)] == [incident_id]
+    back = run(engine, [scene.frame([BOLT]) for _ in range(20)])
+    assert incidents(back) == []
+    assert [e.incident_id for e in back if isinstance(e, ObjectReturned)] == [incident_id]
+
+
+def test_open_incident_survives_restart():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    det = inc.detection
+
+    # New engine after a restart: the bolt is still there and the reference is learned without it.
+    restarted = make_engine()
+    restarted.restore_incident(det.id, det.center_px, det.bbox, det.risk, present=True)
+    learn(restarted, scene)
+    events = run(restarted, [scene.frame([BOLT]) for _ in range(30)])
+    assert incidents(events) == []
+
+    gone = run(restarted, [scene.frame() for _ in range(restarted.params.gone_frames + 2)])
+    assert [e.incident_id for e in gone if isinstance(e, ObjectGone)] == [det.id]
+
+
+def test_closed_false_alarm_does_not_retrigger():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    events = run(engine, [scene.frame([BOLT]) for _ in range(15)])
+    (inc,) = incidents(events)
+    engine.close_incident(inc.detection.id, absorb=True)
+    assert incidents(run(engine, [scene.frame([BOLT]) for _ in range(40)])) == []
+
+
+def test_object_removed_after_learning_is_one_false_alarm():
+    # Known limitation (documented): a bolt present while the reference is learned and then
+    # picked up gives one "obiect necunoscut"; after "Alarmă falsă" it stays quiet.
+    scene, engine = Scene(), make_engine()
+    for _ in range(engine.params.reference_frames):
+        engine.process(scene.frame([BOLT]))
+    found = incidents(run(engine, [scene.frame() for _ in range(15)]))
+    assert len(found) == 1
+    engine.close_incident(found[0].detection.id, absorb=True)
+    assert incidents(run(engine, [scene.frame() for _ in range(30)])) == []
+
+
+def test_false_alarm_object_removed_later_leaves_no_ghost():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    (inc,) = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    engine.close_incident(inc.detection.id, absorb=True)
+    run(engine, [scene.frame([BOLT]) for _ in range(5)])
+    assert incidents(run(engine, [scene.frame() for _ in range(30)])) == []
+
+
+def test_uniform_object_over_markings_is_not_a_ghost():
+    # A plain piece of plastic lying on the threshold stripes must still be reported.
+    scene, engine = Scene(), make_engine()
+    for x in range(100, 220, 12):
+        scene.base[60:180, x : x + 6] = 230
+    learn(engine, scene)
+    events = run(engine, [scene.frame([(130, 100, 30, 24, 105)]) for _ in range(15)])
+    assert len(incidents(events)) == 1
+
+
+def test_very_large_object_is_a_vehicle_event():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    events = run(engine, [scene.frame([(60, 60, 120, 80, 40)]) for _ in range(20)])
+    assert incidents(events) == []
+    large = [e for e in events if isinstance(e, LargeObject)]
+    assert len(large) == 1 and large[0].active
+
+
+def test_yolo_plus_change_gives_source_both():
+    yolo = FakeYolo([(BBox(x=146, y=106, w=22, h=18), "surub", "șurub", 0.91)])
+    scene, engine = Scene(), make_engine(params={"yolo_every_n": 1})
+    learn(engine, scene)
+    engine.set_yolo(yolo)
+    found = incidents(run(engine, [scene.frame([BOLT]) for _ in range(10)]))
+    assert len(found) == 1
+    det = found[0].detection
+    assert det.source == "both"
+    assert det.class_key == "surub"
+    assert det.object_class == "șurub"
+    assert det.risk == "critic"
+
+
+def test_yolo_without_change_keeps_source_yolo():
+    # YOLO sees an object that is part of the reference (no change region).
+    yolo = FakeYolo([(BBox(x=40, y=40, w=20, h=20), "cheie", "cheie", 0.8)])
+    scene, engine = Scene(), make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    found = incidents(run(engine, [scene.frame() for _ in range(25)]))
+    assert len(found) == 1
+    assert found[0].detection.source == "yolo"
+
+
+def _stripes(scene: Scene) -> None:
+    for x in range(60, 260, 24):
+        scene.base[90:150, x : x + 10] = 225
+
+
+def test_shadow_over_markings_raises_no_alert():
+    scene, engine = Scene(), make_engine()
+    _stripes(scene)
+    learn(engine, scene)
+    events = []
+    for i in range(60):
+        frame = scene.frame().astype(np.float32)
+        shade = np.zeros(frame.shape[:2], np.float32)
+        cv2.ellipse(shade, (-60 + i * 7, 120), (70, 50), 0, 0, 360, 1.0, -1)
+        shade = cv2.GaussianBlur(shade, (41, 41), 0)[:, :, None]
+        events += engine.process((frame * (1 - 0.35 * shade)).astype(np.uint8)).events
+    assert incidents(events) == []
+
+
+def test_one_pixel_camera_shake_raises_no_alert():
+    scene, engine = Scene(), make_engine()
+    _stripes(scene)
+    learn(engine, scene)
+    rng = np.random.default_rng(4)
+    frames = [np.roll(scene.frame(), tuple(int(v) for v in rng.integers(-1, 2, 2)), axis=(0, 1)) for _ in range(60)]
+    assert incidents(run(engine, frames)) == []
+
+
+def test_hand_held_still_is_not_the_object():
+    # Dark sleeve from the top edge, the hand itself looks detached from it.
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    arm, hand = (150, 0, 20, 60, 40), (140, 100, 32, 34, 200)
+    assert incidents(run(engine, [scene.frame([arm, hand, BOLT]) for _ in range(20)])) == []
+    found = incidents(run(engine, [scene.frame([BOLT]) for _ in range(15)]))
+    assert len(found) == 1
+    assert abs(found[0].detection.center_px[0] - 157) <= 5
+
+
+def test_object_cut_by_the_frame_edge_is_not_fod():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    assert incidents(run(engine, [scene.frame([(0, 100, 30, 20, 220)]) for _ in range(20)])) == []
+
+
+def test_something_left_at_the_edge_does_not_block_alerts():
+    scene, engine = Scene(), make_engine()
+    learn(engine, scene)
+    cable = (0, 200, 60, 6, 30)
+    limit = engine.params.large_persist_frames * 5
+    run(engine, [scene.frame([cable]) for _ in range(limit)])
+    found = incidents(run(engine, [scene.frame([cable, BOLT]) for _ in range(15)]))
+    assert len(found) == 1
+
+
+def test_yolo_only_false_alarm_is_remembered():
+    # YOLO keeps taking a runway marking for FOD: after "false alarm" that spot stays quiet.
+    from app.vision.engine import IgnoredZones
+
+    yolo = FakeYolo([(BBox(x=40, y=40, w=20, h=20), "label", "etichetă", 0.8)])
+    scene, engine = Scene(), make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    [inc] = incidents(run(engine, [scene.frame() for _ in range(25)]))
+    engine.close_incident(inc.detection.id, absorb=True)
+    events = run(engine, [scene.frame() for _ in range(40)])
+    assert incidents(events) == []
+    [saved] = [e for e in events if isinstance(e, IgnoredZones)]
+    assert saved.zones[0].contains(50, 50)
+
+    # After a restart the saved zones are loaded back.
+    fresh = make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    fresh.set_ignored(saved.zones)
+    assert incidents(run(fresh, [scene.frame() for _ in range(25)])) == []
+
+
+def test_ignored_zone_does_not_hide_a_real_new_object():
+    yolo = FakeYolo([(BBox(x=146, y=106, w=22, h=18), "bolt", "bolț", 0.9)])
+    scene, engine = Scene(), make_engine(params={"yolo_every_n": 1})
+    engine.set_ignored([BBox(x=140, y=100, w=40, h=30)])
+    learn(engine, scene)
+    engine.set_yolo(yolo)
+    # A bolt dropped on the dismissed spot is a change against the clean runway: still an alert.
+    found = incidents(run(engine, [scene.frame([BOLT]) for _ in range(10)]))
+    assert len(found) == 1 and found[0].detection.source == "both"
+
+
+def test_unsure_yolo_box_without_any_change_is_not_an_alert():
+    # Threshold bars read as a "label" at 0.6: nothing changed on the runway, so no alarm.
+    yolo = FakeYolo([(BBox(x=40, y=40, w=20, h=20), "label", "etichetă", 0.6)])
+    scene, engine = Scene(), make_engine(yolo=yolo, params={"yolo_every_n": 1})
+    assert incidents(run(engine, [scene.frame() for _ in range(25)])) == []
+
+
+def test_unsure_yolo_box_on_a_real_change_still_names_the_object():
+    yolo = FakeYolo([(BBox(x=146, y=106, w=22, h=18), "bolt", "bolț", 0.5)])
+    scene, engine = Scene(), make_engine(params={"yolo_every_n": 1})
+    learn(engine, scene)
+    engine.set_yolo(yolo)
+    [found] = incidents(run(engine, [scene.frame([BOLT]) for _ in range(10)]))
+    assert found.detection.source == "both" and found.detection.class_key == "bolt"

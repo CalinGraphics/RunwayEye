@@ -1,0 +1,98 @@
+{
+  "descriere": "Cât de grav poate fi fiecare obiect detectat pentru o aeronavă care rulează, decolează sau aterizează. Nivelul dă riscul afișat (critic / mediu), acțiunea recomandată și timpul maxim până la eliminare. Folosit de backend/app/services/risk.py; orice clasă nouă din app/vision/types.py trebuie adăugată aici (un test verifică).",
+  "niveluri": {
+    "5": {
+      "nume": "Catastrofal",
+      "risc": "critic",
+      "actiune": "Opriți decolările și aterizările pe pistă până la eliminare",
+      "timp_maxim_min": 5
+    },
+    "4": {
+      "nume": "Major",
+      "risc": "critic",
+      "actiune": "Eliminare imediată; turnul avertizează echipajele",
+      "timp_maxim_min": 10
+    },
+    "3": {
+      "nume": "Moderat",
+      "risc": "mediu",
+      "actiune": "Eliminare înainte de următoarea mișcare pe pistă",
+      "timp_maxim_min": 15
+    },
+    "2": {
+      "nume": "Minor",
+      "risc": "mediu",
+      "actiune": "Eliminare la următoarea inspecție a pistei",
+      "timp_maxim_min": 30
+    },
+    "1": {
+      "nume": "Neglijabil",
+      "risc": "mediu",
+      "actiune": "Se notează și se elimină la curățenia programată",
+      "timp_maxim_min": 60
+    }
+  },
+  "pericole": {
+    "motor": "ingestie în motor (palete de ventilator și compresor)",
+    "anvelopa": "tăierea sau explozia anvelopei",
+    "structura": "proiectat în fuselaj, aripă sau tren de aterizare",
+    "aspirare": "aspirat în prizele de aer, poate acoperi sondele de viteză",
+    "coliziune": "coliziune la viteză mare",
+    "atractie": "atrage păsări și animale pe pistă",
+    "chimic": "scurgeri corozive sau risc de incendiu"
+  },
+  "obiecte": {
+    "bolt": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur și compact: distruge palete de motor și poate tăia anvelopa."},
+    "bolt_nut_set": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur și compact: distruge palete de motor și poate tăia anvelopa."},
+    "bolt_washer": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur și compact: distruge palete de motor și poate tăia anvelopa."},
+    "screw": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Vârful ascuțit perforează anvelopa; ingerat, rupe palete."},
+    "nut": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur, ușor de aspirat de motor din cauza mărimii mici."},
+    "washer": {"nivel": 5, "pericole": ["motor"], "motiv": "Disc metalic mic, aspirat ușor de motor."},
+    "nail": {"nivel": 5, "pericole": ["anvelopa", "motor"], "motiv": "Perforează anvelopa la roluire; explozia anvelopei la decolare e una dintre cele mai grave urmări FOD."},
+    "wire": {"nivel": 4, "pericole": ["motor", "anvelopa"], "motiv": "Sârma se poate încolăci în tren sau poate fi aspirată de motor."},
+    "metal_part": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "O bandă metalică căzută de pe un avion a tăiat anvelopa Concorde în 2000 și a dus la prăbușirea lui."},
+    "metal_sheet": {"nivel": 5, "pericole": ["anvelopa", "motor", "structura"], "motiv": "Marginile tăioase despică anvelopa; bucățile pot fi proiectate în rezervoare."},
+    "clamp_part": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Piesă metalică dură, cu muchii."},
+    "adjustable_clamp": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Piesă metalică dură, cu muchii."},
+    "wrench": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Unealtă grea de oțel: distruge motorul și poate fi proiectată în structură."},
+    "adjustable_wrench": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Unealtă grea de oțel: distruge motorul și poate fi proiectată în structură."},
+    "pliers": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Unealtă grea de oțel: distruge motorul și poate fi proiectată în structură."},
+    "screwdriver": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Tija de oțel ascuțită perforează anvelopa și rupe palete."},
+    "hammer": {"nivel": 5, "pericole": ["motor", "structura", "anvelopa"], "motiv": "Masă mare de metal: avarie gravă la orice contact."},
+    "cutter": {"nivel": 5, "pericole": ["anvelopa", "motor"], "motiv": "Lama taie anvelopa la contact."},
+    "battery": {"nivel": 5, "pericole": ["motor", "chimic"], "motiv": "Corp dur, plus electrolit coroziv și risc de incendiu dacă e strivită."},
+    "rock": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Pietrele sunt cea mai frecventă cauză de avarii FOD la motoare."},
+    "soda_can": {"nivel": 4, "pericole": ["motor"], "motiv": "Aluminiu ușor de aspirat; strivit, devine o bucată tăioasă."},
+    "fuel_cap": {"nivel": 4, "pericole": ["motor", "anvelopa"], "motiv": "Capac dur, căzut de obicei de pe un vehicul de alimentare."},
+    "luggage_part": {"nivel": 4, "pericole": ["motor", "structura"], "motiv": "Roți, catarame și mânere de bagaj: părți dure, de mărime medie."},
+    "hose": {"nivel": 3, "pericole": ["motor", "aspirare"], "motiv": "Moale, dar poate bloca prizele de aer sau se poate încolăci în tren."},
+    "plastic_part": {"nivel": 3, "pericole": ["motor"], "motiv": "Plasticul dur crapă palete; mai puțin grav decât metalul."},
+    "wood": {"nivel": 3, "pericole": ["motor", "anvelopa"], "motiv": "Așchiile pot fi aspirate; o scândură cu cuie e la fel de gravă ca metalul."},
+    "pen": {"nivel": 3, "pericole": ["motor"], "motiv": "Mic și dur, ușor de aspirat."},
+    "luggage_tag": {"nivel": 2, "pericole": ["aspirare", "motor"], "motiv": "Ușoară, dar poate fi aspirată sau poate acoperi o sondă."},
+    "label": {"nivel": 2, "pericole": ["aspirare"], "motiv": "Hârtie sau folie: poate acoperi prizele de aer sau sondele de viteză."},
+    "tape": {"nivel": 2, "pericole": ["aspirare"], "motiv": "Se lipește pe prize și sonde."},
+    "paint_chip": {"nivel": 1, "pericole": ["motor"], "motiv": "Fulgi foarte ușori; semn că o suprafață se degradează."},
+
+    "pasare": {"nivel": 4, "pericole": ["motor", "atractie"], "motiv": "O pasăre vie poate lovi motorul la decolare; una moartă atrage alte păsări și animale pe pistă."},
+    "animal": {"nivel": 5, "pericole": ["coliziune", "atractie"], "motiv": "Un animal pe pistă poate provoca o coliziune la viteză de decolare sau de aterizare."},
+    "persoana": {"nivel": 5, "pericole": ["coliziune"], "motiv": "Persoană pe pistă fără autorizare (incursiune): pericol de coliziune."},
+    "anvelopa": {"nivel": 5, "pericole": ["anvelopa", "motor", "structura"], "motiv": "Bucățile de anvelopă sunt grele și sunt proiectate cu forță în structură și rezervoare."},
+    "bagaj": {"nivel": 5, "pericole": ["coliziune", "motor"], "motiv": "Obiect mare: coliziune sau avarie gravă la motor."},
+    "punga": {"nivel": 3, "pericole": ["aspirare", "motor"], "motiv": "Purtată de vânt, e aspirată ușor și poate bloca prizele de aer."},
+    "sticla": {"nivel": 3, "pericole": ["motor"], "motiv": "Plastic dur, ușor de aspirat."},
+    "manusa": {"nivel": 3, "pericole": ["motor", "aspirare"], "motiv": "Pierdută des de personalul de la sol; aspirată ușor de motor."},
+    "carton": {"nivel": 2, "pericole": ["aspirare", "motor"], "motiv": "Ușor, purtat de vânt: poate acoperi prizele de aer."},
+
+    "surub": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur și compact: distruge palete de motor și poate tăia anvelopa."},
+    "piulita": {"nivel": 5, "pericole": ["motor", "anvelopa"], "motiv": "Metal dur, ușor de aspirat de motor din cauza mărimii mici."},
+    "cheie": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Unealtă grea de oțel: distruge motorul și poate fi proiectată în structură."},
+    "metal": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Metalul e cel mai periculos tip de obiect străin pentru motoare și anvelope."},
+    "plastic": {"nivel": 3, "pericole": ["motor", "aspirare"], "motiv": "Plasticul poate fi aspirat; mai puțin grav decât metalul."},
+    "piatra": {"nivel": 5, "pericole": ["motor", "anvelopa", "structura"], "motiv": "Pietrele sunt cea mai frecventă cauză de avarii FOD la motoare."}
+  },
+  "obiect_necunoscut": {
+    "mic": {"nivel": 2, "pericole": ["motor"], "motiv": "Obiect neidentificat de modele: verificați-l pe imagine sau pe pistă."},
+    "mare": {"nivel": 4, "pericole": ["motor", "structura"], "motiv": "Obiect neidentificat, dar mare: tratați-l ca periculos până la verificare."}
+  }
+}

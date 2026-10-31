@@ -5,11 +5,11 @@ chcp 65001 >nul
 cd /d "%~dp0"
 title RunwayEye
 
-rem First run on this computer: venv + dependencies + .env + demo clip (scripts\setup.py).
+rem First run on this computer: venv + dependencies + .env + demo clip (backend\scripts\setup.py).
 if not exist "venv\Scripts\python.exe" (
   echo [RunwayEye] Prima pornire: instalez mediul Python ^(cateva minute, o singura data^).
-  py -3 scripts\setup.py
-  if not exist "venv\Scripts\python.exe" python scripts\setup.py
+  py -3 backend\scripts\setup.py
+  if not exist "venv\Scripts\python.exe" python backend\scripts\setup.py
   if not exist "venv\Scripts\python.exe" (
     echo [RunwayEye] Nu gasesc Python 3.11+. Instalati-l de pe python.org ^(bifati "Add to PATH"^), apoi porniti din nou.
     pause
@@ -18,12 +18,14 @@ if not exist "venv\Scripts\python.exe" (
 )
 rem Relative path without spaces on purpose: it can be used unquoted inside for /f below.
 set "PY=venv\Scripts\python.exe"
+rem The Python code lives in backend\ (package "app").
+set "PYTHONPATH=%~dp0backend"
 
 if not exist ".env" copy ".env.example" ".env" >nul
 
 if not exist "data\videos\synthetic_demo.mp4" (
   echo [RunwayEye] Desenez clipul demo folosit cand nu exista camera ^(o singura data, ~1 minut^)...
-  %PY% scripts\make_demo_clip.py
+  %PY% backend\scripts\make_demo_clip.py
 )
 
 set "RE_PORT="

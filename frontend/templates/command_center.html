@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}RunwayEye · Command Center{% endblock %}
+{% block body_class %}min-h-dvh bg-base-100 text-base-content lg:h-dvh lg:overflow-hidden{% endblock %}
+{% block body %}
+{% set active = "cc" %}
+{% set cfg = {
+  "runway": settings.runway_name,
+  "geometry": {"length": geometry.length_m, "width": geometry.width_m},
+  "tuning": tuning,
+  "demo": settings.demo_mode,
+} %}
+{% set letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+<div class="flex lg:h-dvh" x-data='commandCenter({{ cfg | tojson }})' @keydown.escape.window="dismissAlarm()">
+  {% include "partials/nav.html" %}
+
+  <div class="flex min-w-0 flex-1 flex-col pb-16 lg:pb-0">
+    <header class="flex items-center gap-2 border-b border-line bg-panel/70 px-3 py-2.5 sm:gap-3 sm:px-4">
+      <a href="/" class="lg:hidden" aria-label="RunwayEye"><span class="brand-mark size-8" aria-hidden="true"></span></a>
+
+      <div class="runway-state flex-1 lg:max-w-xl" :data-tone="runwayState.tone" role="status" aria-live="polite">
+        <span class="runway-state-light" aria-hidden="true"></span>
+        <span class="flex min-w-0 flex-col">
+          <span class="runway-state-label hidden sm:block">Pista {{ settings.runway_name }}</span>
+          <span class="runway-state-text" x-text="runwayState.text">Pistă liberă</span>
+        </span>
+        <span x-show="criticalCount" x-cloak class="ml-auto hidden shrink-0 rounded-full bg-white sm:inline px-2.5 py-0.5 font-mono text-xs font-bold text-error"
+              x-text="criticalCount + ' CRITIC'"></span>
+      </div>
+
+      <div class="ml-auto hidden items-baseline gap-3 px-2 md:flex">
+        <span class="flex flex-col items-end leading-none">
+          <span class="readout text-2xl font-semibold" x-text="localTime">--:--:--</span>
+          <span class="readout mt-1 text-[0.65rem] text-base-content/50" x-text="utcTime + ' UTC'"></span>
+        </span>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-1">
+        <button class="btn btn-sm" :class="soundOn ? 'btn-ghost text-success' : 'btn-primary'" @click="enableSound()"
+                :aria-pressed="soundOn.toString()" :aria-label="soundOn ? 'Sunet activ' : 'Activează sunetul'">
+          <span x-show="soundOn">{{ icon("sound-on") }}</span><span x-show="!soundOn">{{ icon("sound-off") }}</span>
+          <span class="hidden sm:inline" x-text="soundOn ? 'Sunet activ' : 'Activează sunetul'">Activează sunetul</span>
+        </button>
+        <button class="btn btn-sm btn-ghost" @click="showQr = true" aria-label="Telefon echipă">
+          {{ icon("phone") }}<span class="hidden xl:inline">Telefon echipă</span>
+        </button>
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-sm btn-ghost btn-square" aria-label="Mai mult">{{ icon("menu") }}</div>
+          <ul tabindex="0" class="dropdown-content menu z-50 mt-2 w-56 rounded-box border border-line bg-base-200 p-1.5 text-sm shadow-2xl">
+            <li><button @click="resetReference(); $el.blur()">{{ icon("refresh") }} Pista e curată acum</button></li>
+            <li><a href="/calibrate">{{ icon("target") }} Calibrare pistă</a></li>
+            <li><a href="/upload">{{ icon("upload") }} Test pe poză sau clip</a></li>
+            {% if settings.demo_mode %}
+            <li><button @click="showTuning = true; $el.blur()">{{ icon("sliders") }} Reglaj detecție</button></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <div x-show="!connected" x-cloak class="flex items-center justify-center gap-2 bg-error px-4 py-1.5 text-center text-sm font-semibold text-error-content" role="alert">
+      Fără legătură cu serverul: alertele noi nu ajung aici. Reconectare automată…
+    </div>
+
+    <main class="grid grid-cols-[minmax(0,1fr)] gap-3 p-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_400px] 2xl:grid-cols-[minmax(0,1fr)_440px]">
+      <section class="order-2 flex min-h-0 min-w-0 flex-col gap-3 lg:order-1">
+
+        <div class="panel monitor flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1">
+          <img src="/video" alt="Flux video live de la camera pistei" class="max-h-full max-w-full object-contain">
+          <span class="monitor-corner top-3 left-3 border-t-2 border-l-2" aria-hidden="true"></span>
+          <span class="monitor-corner top-3 right-3 border-t-2 border-r-2" aria-hidden="true"></span>
+          <span class="monitor-corner bottom-3 left-3 border-b-2 border-l-2" aria-hidden="true"></span>
+          <span class="monitor-corner right-3 bottom-3 border-r-2 border-b-2" aria-hidden="true"></span>
+
+          <div class="hud top-4 left-4">
+            <span class="hud-chip"><span class="live-dot"></span>LIVE</span>
+          </div>
+          <div class="hud top-4 right-4">
+            <span x-show="large" x-cloak class="hud-chip bg-warning/90 font-bold text-warning-content">
+              {{ icon("truck", "size-3.5") }}<span class="first-letter:uppercase" x-text="large ? (large.label || 'Obiect mare pe pistă') + (large.sector ? ' · ' + large.sector : '') : ''"></span>
+            </span>
+            <span class="hud-chip" x-show="status" x-text="status ? status.fps.toFixed(0) + ' cadre/s' : ''"></span>
+          </div>
+          <div class="hud bottom-4 left-4">
+            <span x-show="status && status.learning" x-cloak class="hud-chip text-secondary">
+              <span class="loading loading-ring loading-xs"></span>
+              Învăț pista curată <span x-text="status ? status.learned_frames + '/' + status.reference_frames : ''"></span>
+            </span>
+          </div>
+          <div class="hud right-4 bottom-4">
+            <button class="btn btn-xs border-white/20 bg-black/60 text-white backdrop-blur hover:bg-black/80 sm:btn-sm" @click="resetReference()" :disabled="resetting"
+                    title="Tot ce se vede acum e considerat fundal curat">
+              {{ icon("refresh", "size-3.5") }} Pista e curată acum
+            </button>
+          </div>
+        </div>
+
+        <div class="panel shrink-0">
+          <div class="panel-head">
+            <h2>Harta pistei · sectoare A–{{ letters[geometry.sectors_along - 1] }} × 1–{{ geometry.sectors_across }}</h2>
+            <span x-show="status && !status.calibrated" x-cloak class="shrink-0 text-xs text-warning">
+              Poziția apare după <a href="/calibrate" class="link">calibrare</a>
+            </span>
+            <span x-show="status && status.calibrated" x-cloak class="hidden shrink-0 text-xs text-base-content/45 xl:inline">1 stânga · 2 ax · 3 dreapta, privit de la 09</span>
+          </div>
+          <div class="overflow-x-auto">
+          <div class="relative mx-auto w-full min-w-[560px] max-w-[1100px] px-2 py-1">
+            <div class="relative w-full" style="aspect-ratio: 1000 / 200">
+              <svg viewBox="0 0 1000 200" class="absolute inset-0 size-full" role="img" aria-label="Harta pistei cu sectoare">
+                {# Runway rectangle: x 60..940, y 40..160 (markerStyle() in app.js uses the same numbers). #}
+                <defs>
+                  <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#1f262f"/><stop offset="0.5" stop-color="#232b35"/><stop offset="1" stop-color="#1f262f"/>
+                  </linearGradient>
+                </defs>
+                <rect x="40" y="30" width="920" height="140" rx="6" fill="#0c1913" opacity="0.8"/>
+                <rect x="60" y="40" width="880" height="120" fill="url(#asphalt)"/>
+                <line x1="60" y1="43" x2="940" y2="43" stroke="#e8edf2" stroke-width="1.5" opacity="0.55"/>
+                <line x1="60" y1="157" x2="940" y2="157" stroke="#e8edf2" stroke-width="1.5" opacity="0.55"/>
+                {% set cw = 880 / geometry.sectors_along %}
+                {% set ch = 120 / geometry.sectors_across %}
+                {% for i in range(geometry.sectors_along) %}
+                  {% for j in range(geometry.sectors_across) %}
+                    {% set name = letters[i] ~ (j + 1) %}
+                    <rect x="{{ 60 + i * cw }}" y="{{ 40 + j * ch }}" width="{{ cw }}" height="{{ ch }}"
+                          fill="transparent" stroke="#3fcdee" stroke-opacity="0.16" stroke-dasharray="2 6"
+                          :class="{ 'sector-alert': flash.includes('{{ name }}') }"/>
+                    <text x="{{ 60 + (i + 0.5) * cw }}" y="{{ 40 + (j + 0.5) * ch + (-9 if j == (geometry.sectors_across // 2) and geometry.sectors_across % 2 else 0) }}" font-size="11" font-family="JetBrains Mono, Consolas, monospace"
+                          fill="#8a98a6" opacity="0.55" text-anchor="middle" dominant-baseline="middle">{{ name }}</text>
+                  {% endfor %}
+                {% endfor %}
+                {% for k in range(8) %}
+                  <rect x="66" y="{{ 50 + k * 13 }}" width="18" height="6" fill="#e8edf2" opacity="0.7"/>
+                  <rect x="916" y="{{ 50 + k * 13 }}" width="18" height="6" fill="#e8edf2" opacity="0.7"/>
+                {% endfor %}
+                <text x="24" y="101" font-size="22" font-weight="800" font-family="Archivo, sans-serif" fill="#ffb21e"
+                      text-anchor="middle" dominant-baseline="middle">09</text>
+                <text x="976" y="101" font-size="22" font-weight="800" font-family="Archivo, sans-serif" fill="#ffb21e"
+                      text-anchor="middle" dominant-baseline="middle">27</text>
+                <line x1="100" y1="100" x2="900" y2="100" stroke="#e8edf2" stroke-width="2" stroke-dasharray="16 12" opacity="0.4"/>
+                {% for f in [0, 0.25, 0.5, 0.75, 1] %}
+                  {% set tx = 60 + 880 * f %}
+                  <line x1="{{ tx }}" y1="172" x2="{{ tx }}" y2="178" stroke="#5c6a78"/>
+                  <text x="{{ tx }}" y="191" font-size="10" font-family="JetBrains Mono, Consolas, monospace" fill="#6b7988"
+                        text-anchor="{{ 'start' if f == 0 else 'end' if f == 1 else 'middle' }}">{{ (geometry.length_m * f) | round | int }} m</text>
+                {% endfor %}
+                <line x1="60" y1="175" x2="940" y2="175" stroke="#3a4552"/>
+                <text x="60" y="22" font-size="10" font-family="JetBrains Mono, Consolas, monospace" fill="#ffb21e" letter-spacing="1.5">◂ PRAG 09</text>
+                <text x="940" y="22" font-size="10" font-family="JetBrains Mono, Consolas, monospace" fill="#ffb21e" letter-spacing="1.5" text-anchor="end">PRAG 27 ▸</text>
+              </svg>
+              <template x-for="inc in positioned" :key="inc.id">
+                <button type="button" class="map-marker" :data-tone="riskTone(inc.risk)" :data-hl="hl === inc.id"
+                        :style="markerStyle(inc)" @click="zoomId = inc.id" @mouseenter="hl = inc.id" @mouseleave="hl = null"
+                        :aria-label="inc.object_class + ', sector ' + inc.sector + ', risc ' + inc.risk"
+                        :title="inc.object_class + ' · Sector ' + inc.sector">
+                  <span class="map-marker-ping" aria-hidden="true"></span>
+                  <span class="map-marker-dot" aria-hidden="true"></span>
+                </button>
+              </template>
+            </div>
+          </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel order-1 flex min-h-0 min-w-0 flex-col lg:order-2" aria-labelledby="alerts-title">
+        <div class="panel-head">
+          <h2 id="alerts-title">Alerte active</h2>
+          <span class="flex items-center gap-2">
+            <span x-show="criticalCount" x-cloak class="risk-tag" data-tone="error" x-text="criticalCount + ' critic'"></span>
+            <span class="readout grid size-7 place-items-center rounded-full bg-base-300 text-sm font-bold" x-text="incidents.length">0</span>
+          </span>
+        </div>
+        <div class="flex-1 space-y-2.5 overflow-y-auto p-2.5 lg:max-h-none">
+          <div x-show="!incidents.length" class="flex h-full flex-col items-center justify-center gap-3 px-6 py-8 text-center lg:py-10">
+            <div class="radar w-24 lg:w-32" aria-hidden="true"></div>
+            <p class="text-xl font-bold text-success">Pistă liberă</p>
+            <p class="max-w-xs text-sm text-base-content/55">Nicio alertă deschisă. Un obiect care rămâne pe pistă apare aici în 1–2 secunde, cu sectorul și riscul.</p>
+            <button x-show="!soundOn" x-cloak class="btn btn-sm btn-primary mt-1" @click="enableSound()">{{ icon("sound-off") }} Activează sunetul alarmei</button>
+          </div>
+
+          <template x-for="inc in ordered" :key="inc.id">
+            <article class="incident incident-new" :data-tone="riskTone(inc.risk)" :data-hl="hl === inc.id"
+                     @mouseenter="hl = inc.id" @mouseleave="hl = null">
+              <div class="flex items-start gap-3">
+                <button type="button" class="relative shrink-0 cursor-zoom-in overflow-hidden rounded-field" @click="zoomId = inc.id" aria-label="Mărește poza obiectului">
+                  <img :src="inc.crop_url" alt="" class="size-16 bg-base-300 object-cover sm:size-[72px]">
+                  <span x-show="!inc.object_present" class="absolute inset-x-0 bottom-0 bg-black/75 py-0.5 text-center text-[0.6rem] font-semibold">dispărut</span>
+                </button>
+                <div class="min-w-0 flex-1">
+                  <span class="risk-tag" :data-tone="riskTone(inc.risk)" x-text="inc.risk"></span>
+                  <span x-show="inc.severity" class="readout ml-1 text-xs text-base-content/60" :title="inc.severity && inc.severity.motiv"
+                        x-text="inc.severity ? 'severitate ' + inc.severity.nivel + '/5' : ''"></span>
+                  <h3 class="mt-1 truncate text-lg leading-tight font-bold first-letter:uppercase" x-text="inc.object_class"></h3>
+                  <p class="truncate text-xs text-base-content/55" x-text="inc.runway_distance_m != null ? position(inc) : 'fără poziție · pistă necalibrată'"></p>
+                </div>
+                <div class="shrink-0 rounded-field border border-line bg-base-100 px-2.5 py-1.5 text-center">
+                  <p class="font-mono text-[0.55rem] tracking-[0.14em] text-base-content/45 uppercase">Sector</p>
+                  <p class="sector-code" x-text="inc.sector || '—'"></p>
+                </div>
+              </div>
+
+              <p x-show="inc.ai_description" class="mt-2.5 flex gap-1.5 text-xs text-base-content/70">
+                {{ icon("sparkle", "mt-px size-3.5 text-accent") }}<span x-text="inc.ai_description"></span>
+              </p>
+
+              <div class="flow mt-3" aria-label="Pașii incidentului">
+                <template x-for="s in steps(inc)" :key="s.label">
+                  <span class="flow-step" :data-state="s.state" x-text="s.label"></span>
+                </template>
+              </div>
+
+              <div class="mt-2.5 flex items-center gap-2 text-xs text-base-content/55">
+                <span>ora <span class="readout text-base-content/85" x-text="clock(inc.detected_at)"></span></span>
+                <span class="hidden truncate sm:inline" x-text="'· ' + sourceLabel(inc.source) + ' ' + Math.round(inc.confidence * 100) + '%'"></span>
+                <span class="readout ml-auto text-lg leading-none font-bold text-base-content" x-text="elapsed(inc)" title="Timp de la detecție"></span>
+              </div>
+
+              <div class="mt-3 grid grid-cols-3 gap-1.5" :class="busy[inc.id] && 'pointer-events-none opacity-60'" :aria-busy="!!busy[inc.id]">
+                <template x-for="b in actions(inc)" :key="b.a">
+                  <button class="btn btn-sm" :class="[b.cls, b.primary ? 'col-span-3' : 'min-w-0 px-1.5']"
+                          @click="act(inc, b.a)" x-text="b.label"></button>
+                </template>
+              </div>
+            </article>
+          </template>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="flex items-center gap-1.5 overflow-x-auto border-t border-line bg-panel px-3 py-2" aria-label="Starea sistemului">
+      <template x-for="k in ['video', 'fps', 'model', 'data', 'team', 'calib']" :key="k">
+        <span class="status-chip"><span class="status-dot" :class="chip(k).dot"></span><span x-text="chip(k).text"></span></span>
+      </template>
+      <span x-show="status && status.fake_detections" x-cloak class="status-chip border-warning/60 text-warning">detecții false (demo)</span>
+    </footer>
+  </div>
+
+  <div x-show="alarm" x-cloak class="alert-overlay pointer-events-none fixed inset-0 z-40"></div>
+  <div x-show="alarm" x-cloak x-transition.opacity.duration.150ms class="fixed inset-x-0 top-20 z-50 flex justify-center px-3" role="alert" aria-live="assertive">
+    <button type="button" @click="dismissAlarm()" class="alarm-banner">
+      <template x-if="alarm">
+        <img :src="alarm.inc.crop_url" alt="" class="size-16 shrink-0 rounded-field border-2 border-white/70 object-cover sm:size-20">
+      </template>
+      <span class="flex min-w-0 flex-col items-start gap-1">
+        <span class="font-mono text-xs font-bold tracking-[0.2em] opacity-85">⚠ FOD DETECTAT</span>
+        <span class="text-xl leading-tight font-extrabold sm:text-3xl" x-text="alarm ? alarm.text : ''"></span>
+        <span class="text-xs font-medium opacity-80">Atinge sau apasă <span class="kbd-hint border-white/40 text-white/80">Esc</span> ca să oprești sunetul</span>
+      </span>
+    </button>
+  </div>
+
+  <div x-show="zoom" x-cloak class="modal-backdrop-custom" @click.self="zoomId = null" @keydown.escape.window="zoomId = null">
+    <div class="sheet max-w-4xl" role="dialog" aria-modal="true" aria-labelledby="zoom-title">
+      <div class="panel-head sticky top-0 z-10 bg-panel">
+        <h2 id="zoom-title" x-text="zoom ? zoom.object_class + ' · ' + (zoom.sector ? 'sector ' + zoom.sector : 'fără sector') : ''"></h2>
+        <button class="btn btn-ghost btn-sm btn-square" @click="zoomId = null" aria-label="Închide">{{ icon("x") }}</button>
+      </div>
+      <template x-if="zoom">
+        <div>
+          <div class="grid gap-3 p-3 md:grid-cols-[2fr_3fr]">
+            <img :src="zoom.crop_url" alt="Decupajul obiectului" class="w-full rounded-field">
+            <img :src="zoom.snapshot_url" alt="Cadrul complet în momentul detecției" class="w-full rounded-field" @error="$el.remove()">
+          </div>
+          <div x-show="zoom.severity" class="mx-3 mb-3 rounded-field border border-line bg-base-100 px-3 py-2.5 text-sm">
+            <p class="font-semibold">
+              <span x-text="zoom.severity ? 'Severitate ' + zoom.severity.nivel + '/5 · ' + zoom.severity.nume : ''"></span>
+              <span class="font-normal text-base-content/60" x-text="zoom.severity ? ' · eliminare în cel mult ' + zoom.severity.timp_maxim_min + ' min' : ''"></span>
+            </p>
+            <p class="mt-1 text-base-content/75" x-text="zoom.severity ? zoom.severity.motiv : ''"></p>
+            <p class="mt-1 text-base-content/60" x-text="zoom.severity ? 'Pericole: ' + zoom.severity.pericole.join(' · ') : ''"></p>
+            <p class="mt-1 font-semibold text-primary" x-text="zoom.severity ? zoom.severity.actiune : ''"></p>
+          </div>
+          <p x-show="zoom.ai_description" class="mx-3 flex gap-2 rounded-field border border-accent/30 bg-accent/8 px-3 py-2 text-sm">
+            {{ icon("sparkle", "mt-0.5 text-accent") }}<span x-text="zoom.ai_description"></span>
+          </p>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-3 text-sm">
+            <span class="risk-tag" :data-tone="riskTone(zoom.risk)" x-text="'risc ' + zoom.risk"></span>
+            <span class="text-base-content/70" x-text="position(zoom)"></span>
+            <span class="text-base-content/70">detectat la <span class="readout text-base-content" x-text="clock(zoom.detected_at)"></span></span>
+            <div class="flex w-full flex-wrap gap-1.5 sm:ml-auto sm:w-auto" :class="busy[zoom.id] && 'pointer-events-none opacity-60'">
+              <template x-for="b in actions(zoom)" :key="b.a">
+                <button class="btn btn-sm flex-1 sm:flex-none" :class="b.cls" @click="act(zoom, b.a)" x-text="b.label"></button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <div x-show="showQr" x-cloak class="modal-backdrop-custom" @click.self="showQr = false" @keydown.escape.window="showQr = false">
+    <div class="sheet max-w-md" role="dialog" aria-modal="true" aria-labelledby="qr-title">
+      <div class="panel-head"><h2 id="qr-title">Telefonul echipei</h2><button class="btn btn-ghost btn-sm btn-square" @click="showQr = false" aria-label="Închide">{{ icon("x") }}</button></div>
+      <div class="flex flex-col items-center gap-4 p-5 text-center">
+        <div role="status" class="w-full rounded-box px-3 py-2 text-sm font-semibold"
+             :class="phones ? 'bg-success/15 text-success' : 'bg-base-300 text-base-content/70'"
+             x-text="phones ? (phones === 1 ? '✓ 1 telefon conectat' : `✓ ${phones} telefoane conectate`) : 'Niciun telefon conectat încă'"></div>
+        <img :src="'/qr.svg?ip=' + encodeURIComponent(teamAddress ? teamAddress.ip : '') + '&t=' + (showQr ? 1 : 0)"
+             src="/qr.svg" alt="Cod QR către pagina echipei" class="size-56 rounded-box bg-white p-3">
+        <p class="readout break-all text-xs text-primary" x-text="teamAddress ? teamAddress.url : '{{ team_url }}'">{{ team_url }}</p>
+        <div class="w-full space-y-1.5 text-left" x-show="teamUrls.length > 1">
+          <p class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Adresa din cod</p>
+          <template x-for="a in teamUrls" :key="a.ip">
+            <button type="button" class="btn btn-sm w-full justify-between"
+                    :class="teamAddress && teamAddress.ip === a.ip ? 'btn-primary' : 'btn-ghost border-line'"
+                    @click="qrIp = a.ip"><span x-text="a.label"></span><span class="readout text-xs" x-text="a.ip"></span></button>
+          </template>
+        </div>
+        <ol class="space-y-2 text-left text-sm text-base-content/70">
+          <li class="flex gap-2.5"><span class="readout grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-content">1</span>Scanați codul cu camera telefonului: cheia de acces e inclusă.</li>
+          <li class="flex gap-2.5"><span class="readout grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-content">2</span>Pe telefon apăsați o dată „Activează alertele”, ca să sune și să vibreze.</li>
+          <li class="flex gap-2.5"><span class="readout grid size-5 shrink-0 place-items-center rounded-full bg-primary text-[0.65rem] font-bold text-primary-content">3</span><span>Sus apare „✓ telefon conectat”. Probă: <a href="/upload" class="link link-primary">Test upload</a> cu „Trimite ca incident real”.</span></li>
+        </ol>
+        <details class="w-full rounded-box border border-line text-left text-sm" x-show="!phones">
+          <summary class="cursor-pointer px-3 py-2 font-semibold">Telefonul nu deschide pagina?</summary>
+          <ul class="space-y-2 px-3 pb-3 text-base-content/70">
+            <li><b>Rețelele de facultate sau firmă</b> blochează des legătura dintre dispozitive. Porniți pe laptop
+              <b>Hotspot mobil</b> (Setări → Rețea și internet), conectați telefonul la el, apoi alegeți aici „Hotspotul laptopului”.</li>
+            <li><b>Firewall</b> (o singură dată, PowerShell ca administrator):
+              <code class="readout block break-all text-xs text-primary">netsh advfirewall firewall add rule name="RunwayEye {{ settings.port }}" dir=in action=allow protocol=TCP localport={{ settings.port }} profile=any</code></li>
+            <li>Telefonul pe <b>date mobile</b> nu vede laptopul: trebuie să fie pe același Wi-Fi sau pe hotspotul laptopului.</li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  {% if settings.demo_mode %}
+  <div x-show="showTuning" x-cloak class="fixed inset-0 z-50 flex items-end justify-end bg-black/50 sm:items-start sm:p-4"
+       @click.self="showTuning = false" @keydown.escape.window="showTuning = false">
+    <div class="sheet max-w-sm" role="dialog" aria-modal="true" aria-labelledby="tuning-title">
+      <div class="panel-head"><h2 id="tuning-title">Reglaj detecție</h2><button class="btn btn-ghost btn-sm btn-square" @click="showTuning = false" aria-label="Închide">{{ icon("x") }}</button></div>
+      <div class="space-y-5 p-4 text-sm">
+        <label class="block">
+          <span class="flex justify-between"><span>Prag diferență</span><span class="readout text-primary" x-text="tuning.diff_threshold"></span></span>
+          <input type="range" min="5" max="90" step="1" class="range range-xs range-primary mt-2" x-model.number="tuning.diff_threshold" @change="saveTuning()">
+          <span class="mt-1 block text-xs text-base-content/55">Mai mic = prinde obiecte mai șterse, dar și umbre.</span>
+        </label>
+        <label class="block">
+          <span class="flex justify-between"><span>Suprafață minimă (px)</span><span class="readout text-primary" x-text="tuning.min_area_px"></span></span>
+          <input type="range" min="10" max="1500" step="10" class="range range-xs range-primary mt-2" x-model.number="tuning.min_area_px" @change="saveTuning()">
+          <span class="mt-1 block text-xs text-base-content/55">Obiectele mai mici de atât sunt ignorate.</span>
+        </label>
+        <label class="block">
+          <span class="flex justify-between"><span>Persistență (cadre)</span><span class="readout text-primary" x-text="tuning.persist_frames"></span></span>
+          <input type="range" min="2" max="40" step="1" class="range range-xs range-primary mt-2" x-model.number="tuning.persist_frames" @change="saveTuning()">
+          <span class="mt-1 block text-xs text-base-content/55">Cât timp stă obiectul pe loc până la alertă.</span>
+        </label>
+        <label class="block">
+          <span class="flex justify-between"><span>Încredere YOLO</span><span class="readout text-primary" x-text="Number(tuning.yolo_conf).toFixed(2)"></span></span>
+          <input type="range" min="0.1" max="0.9" step="0.05" class="range range-xs range-primary mt-2" x-model.number="tuning.yolo_conf" @change="saveTuning()">
+        </label>
+        <p class="text-xs text-base-content/55">Valorile se aplică imediat și se păstrează în <span class="readout">data/tuning.json</span>. Panoul e ascuns când DEMO_MODE=false.</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="fixed bottom-20 left-3 z-50 flex flex-col gap-2 lg:bottom-14 lg:left-[100px]" aria-live="polite">
+    <template x-for="t in toasts" :key="t.id">
+      <div class="toast-item" :data-kind="t.kind" x-text="t.text"></div>
+    </template>
+  </div>
+</div>
+{% endblock %}
