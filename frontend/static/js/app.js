@@ -303,6 +303,9 @@ document.addEventListener("alpine:init", () => {
     },
 
     async resetReference() {
+      if (this.resetting) return;
+      // Everything in view becomes the clean runway: an object still on it would never alert again.
+      if (!confirm("Confirmi că pista a fost curățată? Tot ce se vede acum devine fundal, iar orice obiect apărut de acum încolo va fi semnalat.")) return;
       this.resetting = true;
       try {
         await RE.post("/reference");

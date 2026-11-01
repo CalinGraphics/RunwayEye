@@ -36,6 +36,7 @@ class ChangeResult:
     global_change: bool = False
     fg_fraction: float = 0.0
     intrusion: bool = False
+    settling: bool = False
 
 
 _CLOSE_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -49,6 +50,9 @@ _RING_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
 INTRUSION_PX = 60
 # A shadow or a lamp scales all colours by about the same factor inside and around a region.
 SHADING_LOG_RATIO = 0.22
+# After 'Pista e curată acum', learning waits for a still scene at most this many times
+# reference_frames, so a camera that never settles still gets a reference.
+SETTLE_LIMIT = 20
 
 
 class ChangeDetector:
@@ -62,6 +66,9 @@ class ChangeDetector:
         self._seen_ghosts: set[tuple[int, int]] = set()
         self._absorbed: list[BBox] = []
         self._mask_edge: np.ndarray | None = None
+        self._check_still = False
+        self._settle_frames = 0
+        self._restarted = False
         if mask is not None:
             self.set_mask(mask)
 
@@ -73,12 +80,35 @@ class ChangeDetector:
     def learned_frames(self) -> int:
         return self.params.reference_frames if self.ready else len(self._buffer)
 
-    def reset_reference(self) -> None:
-        """'Pista e curată acum': relearn the reference from the next frames."""
+    def reset_reference(self, check_still: bool = False) -> None:
+        """Relearn the reference from the next frames.
+
+        `check_still` ('Pista e curată acum'): the team may still be walking off the runway, or
+        something may land while learning. Learning starts over until the scene stays the same
+        for `reference_frames` frames, so neither ends up in the clean runway.
+        """
         self._reference = None
         self._buffer = []
         self._absorbed = []
         self._ghosts = {}
+        self._check_still = check_still
+        self._settle_frames = 0
+        self._restarted = False
+
+    def _unsteady(self, img: np.ndarray) -> bool:
+        """Has something large moved since the first learned frame (a person, a vehicle, the clip
+        jumping back to its start)? Small objects are left to the median, as before: restarting on
+        one that just landed would learn it into the clean runway."""
+        diff = cv2.absdiff(img, self._buffer[0])
+        if diff.ndim == 3:
+            diff = diff.max(axis=2)
+        _, fg = cv2.threshold(diff, self.params.diff_threshold, 255, cv2.THRESH_BINARY)
+        # Only the runway counts: people moving beside it don't keep learning from finishing.
+        if self.mask is not None and self.mask.shape == fg.shape:
+            fg = cv2.bitwise_and(fg, self.mask)
+        fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, _CLOSE_KERNEL)
+        n, _, stats, _ = cv2.connectedComponentsWithStats(fg)
+        return n > 1 and int(stats[1:, cv2.CC_STAT_AREA].max()) >= self.params.max_area_px // 2
 
     def set_mask(self, mask: np.ndarray | None) -> None:
         self.mask = mask
@@ -217,11 +247,20 @@ class ChangeDetector:
         if self._reference is not None and self._reference.shape != img.shape:
             self.reset_reference()
         if self._reference is None:
+            if self._check_still and self._buffer:
+                self._settle_frames += 1
+                if self._settle_frames > SETTLE_LIMIT * p.reference_frames:
+                    self._check_still = False
+                elif self._unsteady(img):
+                    self._buffer = []
+                    self._restarted = True
             self._buffer.append(img)
             if len(self._buffer) >= p.reference_frames:
                 self._reference = np.median(np.stack(self._buffer), axis=0).astype(np.float32)
                 self._buffer = []
-            return ChangeResult(learning=True)
+                self._check_still = False
+                self._restarted = False
+            return ChangeResult(learning=True, settling=self._restarted)
 
         mask = self.mask
         if mask is not None and mask.shape != img.shape[:2]:

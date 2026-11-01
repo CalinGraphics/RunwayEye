@@ -59,7 +59,7 @@
         <div class="dropdown dropdown-end">
           <div tabindex="0" role="button" class="btn btn-sm btn-circle btn-pill" aria-label="Mai mult">{{ icon("menu") }}</div>
           <ul tabindex="0" class="dropdown-content menu z-50 mt-2 w-56 rounded-box border border-line bg-base-100 p-1.5 text-sm shadow-float">
-            <li><button @click="resetReference(); $el.blur()">{{ icon("refresh") }} Pista e curată acum</button></li>
+            <li><button @click="resetReference(); $el.blur()" :disabled="resetting">{{ icon("refresh") }} Pista e curată acum</button></li>
             <li><a href="/calibrate">{{ icon("target") }} Calibrare pistă</a></li>
             <li><a href="/upload">{{ icon("upload") }} Test pe poză sau clip</a></li>
             {% if settings.demo_mode %}

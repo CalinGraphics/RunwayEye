@@ -107,7 +107,10 @@ class VisionService:
         }
 
     def reset_reference(self) -> None:
-        self.engine.reset_reference()
+        """'Pista e curată acum'. A clip starts over too, as at startup: its reference is learned
+        from its clean first seconds, and what it shows after that is detected again."""
+        self.capture.rewind()
+        self.engine.reset_reference(cleared=True)
 
     def restore_incidents(self, incidents) -> None:
         for inc in incidents:
@@ -278,7 +281,9 @@ class VisionService:
         result = self.engine.process(frame)
         self.last_result = result
         status = None
-        if result.learning:
+        if result.learning and result.settling:
+            status = f"Mișcare pe pistă: aștept să fie liberă… {result.learned_frames}/{self.engine.params.reference_frames}"
+        elif result.learning:
             status = f"Învăț pista curată… {result.learned_frames}/{self.engine.params.reference_frames}"
         elif result.global_change:
             status = "Schimbare de lumină: aștept stabilizarea"

@@ -150,6 +150,8 @@ class EngineResult:
     learning: bool
     learned_frames: int
     global_change: bool
+    # Learning started over: something moved or appeared while the clean runway was being learned.
+    settling: bool = False
 
 
 @dataclass
@@ -188,8 +190,11 @@ class DetectionEngine:
         # these do the same for YOLO, and survive restarts (data/ignored_zones.json).
         self.ignored: list[BBox] = []
 
-    def reset_reference(self) -> None:
-        self._commands.put(("reset", None))
+    def reset_reference(self, cleared: bool = False) -> None:
+        """Learn the clean runway again. `cleared`: the operator confirmed every object was removed
+        ('Pista e curată acum'), so nothing seen before counts any more and anything that appears
+        from now on is a new incident."""
+        self._commands.put(("reset", cleared))
 
     def set_calibration(self, calibration: Calibration | None) -> None:
         self._commands.put(("calibration", calibration))
@@ -223,9 +228,20 @@ class DetectionEngine:
             except queue.Empty:
                 return events
             if cmd == "reset":
-                self.change.reset_reference()
+                self.change.reset_reference(check_still=bool(arg))
+                events.extend(self._large_off(self.tracker.tracks))
                 self.tracker.clear()
-                self._sites = {k: s for k, s in self._sites.items() if s.present}
+                if arg:
+                    # The team picked everything up: the open incidents are marked "obiect dispărut"
+                    # (the operator still closes them) and no longer swallow a new object nearby.
+                    events.extend(ObjectGone(k) for k, s in self._sites.items() if s.present)
+                    self._sites.clear()
+                    self._closed.clear()
+                else:
+                    self._sites = {k: s for k, s in self._sites.items() if s.present}
+                self._yolo_cache = []
+                self._global_frames = 0
+                self._intrusion_frames = 0
                 events.append(ReferenceReset("operator"))
             elif cmd == "calibration":
                 self.calibration = arg
@@ -280,6 +296,7 @@ class DetectionEngine:
             if self._global_frames >= self.params.global_reset_frames:
                 self._global_frames = 0
                 self.change.reset_reference()
+                events.extend(self._large_off(self.tracker.tracks))
                 self.tracker.tracks = [t for t in self.tracker.tracks if t.confirmed and not t.large]
                 events.append(ReferenceReset("lumina"))
         else:
@@ -326,7 +343,13 @@ class DetectionEngine:
             learning=change.learning,
             learned_frames=self.change.learned_frames,
             global_change=change.global_change,
+            settling=change.settling,
         )
+
+    def _large_off(self, tracks: list[Track]) -> list[EngineEvent]:
+        """Large tracks about to be dropped: end their banner, or it would stay on for good."""
+        return [LargeObject(False, t.cand.bbox, self._sector(t.cand.center))
+                for t in tracks if t.large and t.confirmed]
 
     def _is_ignored(self, b: BBox) -> bool:
         return any(b.iou(z) >= 0.3 or z.contains(*b.center) for z in self.ignored)
