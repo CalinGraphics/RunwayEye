@@ -23,6 +23,7 @@ def calibrate_page(request: Request):
             "runway_ends": runway_ends(vision.s.runway_name),
             "frame_size": size or (vision.s.frame_width, vision.s.frame_width * 9 // 16),
             "geometry": vision.geometry,
+            "scene_original": bool(vision.scene and vision.scene.has_original),
         },
     )
 
@@ -58,5 +59,6 @@ def save_calibration(request: Request, body: CalibrationIn):
 
 @router.post("/calibrate/reset")
 def reset_calibration(request: Request):
-    request.app.state.vision.reset_calibration()
+    if request.app.state.vision.reset_calibration():
+        return {"ok": True, "restored": True, "message": "Clipul a revenit la calibrarea lui"}
     return {"ok": True, "message": "Calibrarea a fost ștearsă: toată imaginea e considerată pistă"}

@@ -11,6 +11,7 @@
     }, 0)) / 2;
 
     Alpine.data("calibrator", (cfg) => ({
+      cfg,
       names: cfg.names,
       max: 12,
       points: (cfg.outline.length ? cfg.outline : cfg.corners).map((p) => [p[0], p[1]]),
@@ -127,6 +128,7 @@
       async remove() {
         try {
           const r = await RE.post("/calibrate/reset");
+          if (r.restored) return location.reload(); // the clip's own corners are back: show them
           this.clear();
           this.say(r.message);
         } catch (e) {
@@ -140,7 +142,7 @@
 {% set active = "calibrate" %}
 {% block page_title %}Calibrarea pistei{% endblock %}
 {% block content %}
-{% set cfg = {"names": corner_names, "corners": corners, "outline": outline, "size": frame_size} %}
+{% set cfg = {"names": corner_names, "corners": corners, "outline": outline, "size": frame_size, "restorable": scene_original} %}
 {% set a, b = runway_ends %}
 <main class="grid gap-4 px-4 py-4 sm:px-8 sm:py-6 xl:grid-cols-[minmax(0,1fr)_360px]" x-data='calibrator({{ cfg | tojson }})'>
   <section class="panel overflow-hidden">
@@ -236,7 +238,7 @@
       <p class="readout text-xs text-base-content/60">
         {{ geometry.length_m | round | int }} × {{ geometry.width_m | round | int }} m · {{ geometry.sectors_along }} × {{ geometry.sectors_across }} sectoare{% if geometry.mockup_length_cm %} · machetă {{ geometry.mockup_length_cm | round | int }} × {{ geometry.mockup_width_cm | round | int }} cm{% endif %}
       </p>
-      <button class="btn btn-sm btn-ghost -ml-2 text-error" @click="remove()" x-show="saved">Șterge calibrarea</button>
+      <button class="btn btn-sm btn-ghost -ml-2 text-error" @click="remove()" x-show="saved || cfg.restorable" x-text="cfg.restorable ? 'Revino la calibrarea clipului' : 'Șterge calibrarea'">Șterge calibrarea</button>
     </div>
   </aside>
 </main>

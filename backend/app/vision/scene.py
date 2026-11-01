@@ -45,13 +45,32 @@ class Scene:
             return None
         return Calibration.from_data(self.data, self.geometry, frame_size)
 
+    @property
+    def has_original(self) -> bool:
+        return bool(self.data.get("original"))
+
+    def restore_original(self) -> bool:
+        """Back to the corners the clip came with, after a manual calibration went wrong."""
+        original = self.data.pop("original", None)
+        if not original:
+            return False
+        self.data.update(original)
+        self._write()
+        return True
+
     def clear_corners(self) -> None:
         for key in ("corners", "outline", "corner_names"):
             self.data.pop(key, None)
-        self.path.write_text(json.dumps(self.data, indent=2, ensure_ascii=False), encoding="utf-8")
+        self._write()
 
     def save_corners(self, cal: Calibration) -> None:
-        """The operator recalibrated while the clip played: the corners belong to the clip."""
+        """The operator recalibrated while the clip played: the corners belong to the clip.
+        The ones it came with are kept the first time, so a wrong calibration can be undone."""
+        if not self.has_original and self.data.get("corners"):
+            self.data["original"] = {k: self.data[k] for k in ("corners", "outline", "frame_size") if k in self.data}
         self.data.update(corners=[list(c) for c in cal.corners], outline=[list(c) for c in cal.outline],
                          corner_names=CORNER_NAMES, frame_size=list(cal.frame_size))
+        self._write()
+
+    def _write(self) -> None:
         self.path.write_text(json.dumps(self.data, indent=2, ensure_ascii=False), encoding="utf-8")

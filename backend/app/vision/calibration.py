@@ -133,7 +133,10 @@ class Calibration:
         so the height is measured at the scale of the spot where they stand."""
         if upright:
             return self._upright_size_cm(bbox)
-        pts = [(bbox.x, bbox.y), (bbox.x2, bbox.y), (bbox.x2, bbox.y2), (bbox.x, bbox.y2)]
+        # Blur and the detector's closing spread an object about half a pixel past each edge. On a
+        # few-pixel object far down the runway that half pixel alone is tens of centimetres.
+        e = 0.5 if bbox.w > 1 and bbox.h > 1 else 0.0
+        pts = [(bbox.x + e, bbox.y + e), (bbox.x2 - e, bbox.y + e), (bbox.x2 - e, bbox.y2 - e), (bbox.x + e, bbox.y2 - e)]
         uv = [self.to_runway(px, py) for px, py in pts]
         us = [p[0] for p in uv]
         vs = [p[1] for p in uv]

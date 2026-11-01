@@ -79,8 +79,8 @@ def test_mockup_size_estimate():
     rect = Calibration([(0, 0), (0, 600), (1000, 600), (1000, 0)], (1000, 600), geom)
     from app.vision.types import BBox
 
-    # 50 px along = 5 cm on a 100 cm mock-up; 30 px across = 3 cm.
-    assert rect.size_cm(BBox(x=100, y=100, w=50, h=30)) == pytest.approx(5.0, abs=0.01)
+    # 50 px along = 5 cm on a 100 cm mock-up, less the half pixel of blur at each edge: 49 px.
+    assert rect.size_cm(BBox(x=100, y=100, w=50, h=30)) == pytest.approx(4.9, abs=0.01)
 
 
 def test_upright_object_is_measured_by_its_height():
@@ -198,3 +198,23 @@ def test_clip_scene_brings_its_own_runway(tmp_path):
     assert cal.corners[2] == (800.0, 400.0)
     assert Scene.for_source("camera", 0) is None
     assert Scene.for_source("file", str(tmp_path / "other.mp4")) is None
+
+
+def test_scene_keeps_original_corners_through_a_manual_calibration(tmp_path):
+    import json
+
+    from app.vision.scene import Scene
+
+    clip = tmp_path / "real.mp4"
+    clip.write_bytes(b"")
+    good = [[100, 50], [0, 200], [400, 200], [300, 50]]
+    (tmp_path / "real.scene.json").write_text(json.dumps({
+        "runway": {"length_m": 60, "width_m": 45}, "corners": good, "frame_size": [400, 200]}))
+    scene = Scene.for_source("file", str(clip))
+    wrong = scene.calibration((400, 200))
+    wrong.corners = [(0, 0), (400, 0), (400, 200), (0, 200)]
+    wrong.outline = list(wrong.corners)
+    scene.save_corners(wrong)
+    assert scene.has_original
+    assert Scene.for_source("file", str(clip)).restore_original()
+    assert Scene.for_source("file", str(clip)).data["corners"] == good

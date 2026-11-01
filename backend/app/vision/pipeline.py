@@ -202,14 +202,20 @@ class VisionService:
             self.yolo_state = "eroare"
             self.yolo_error = self.yolo_error or (det.error if det else "necunoscută")
 
-    def reset_calibration(self) -> None:
-        """Forget the corners of the source now playing: the clip's own, or the camera's."""
+    def reset_calibration(self) -> bool:
+        """Forget the corners of the source now playing: the camera's, or a clip's manual ones
+        (it goes back to the corners it came with). True when a clip's original corners are back."""
         if self.scene is not None:
+            size = self.frame_size()
+            if self.scene.restore_original() and size:
+                self.set_calibration(self.scene.calibration(size))
+                return True
             self.scene.clear_corners()
         else:
             self.s.calibration_file.unlink(missing_ok=True)
             self.clear_ignored()
         self.set_calibration(None)
+        return False
 
     def save_calibration(self, cal: Calibration) -> None:
         if self.scene is not None:
