@@ -274,9 +274,6 @@
   .monitor {
     @apply relative overflow-hidden bg-[#0d1626];
   }
-  .monitor-corner {
-    @apply pointer-events-none absolute z-[2] size-6 rounded-[4px] border-white/60;
-  }
   .hud {
     @apply pointer-events-none absolute z-[3] flex items-center gap-2;
   }
@@ -386,22 +383,35 @@
 
   /* ---------- Airfield signs (ICAO Annex 14) ----------
      Location sign: yellow on black, where something is. Mandatory sign: white on red, the runway itself. */
+  /* Everything in em, so a sign looks the same from a table cell to the phone's alarm screen.
+     Like the real ones: a thin outer edge, the coloured border line, then the face.
+     text-box trims the line to the capital letters, so equal padding centres them exactly. */
+  .sign-location,
+  .sign-mandatory {
+    @apply inline-block text-center font-mono font-bold whitespace-nowrap;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    border-radius: 0.28em;
+    text-box: trim-both cap alphabetic;
+  }
   .sign-location {
-    @apply inline-grid min-w-[2.6em] place-items-center rounded-[6px] px-[0.45em] py-[0.12em] font-mono font-bold leading-none tracking-wide;
+    min-width: 2.6em;
+    padding: 0.34em 0.5em;
     color: #ffd21f;
     background: #14161a;
     box-shadow:
-      inset 0 0 0 2px #ffd21f,
-      inset 0 0 0 3.5px #14161a,
-      0 2px 6px rgb(0 0 0 / 0.18);
+      inset 0 0 0 0.07em #14161a,
+      inset 0 0 0 0.15em #ffd21f,
+      0 0.08em 0.3em rgb(0 0 0 / 0.18);
   }
   .sign-mandatory {
-    @apply inline-flex items-center rounded-[6px] px-[0.5em] py-[0.15em] font-mono font-bold leading-none tracking-wide text-white;
+    padding: 0.4em 0.62em;
+    color: #fff;
     background: #c8102e;
     box-shadow:
-      inset 0 0 0 1.5px #fff,
-      inset 0 0 0 3px #c8102e,
-      0 2px 6px rgb(200 16 46 / 0.25);
+      inset 0 0 0 0.07em #c8102e,
+      inset 0 0 0 0.14em #fff,
+      0 0.08em 0.3em rgb(200 16 46 / 0.25);
   }
 
   /* ---------- Segmented tabs ---------- */

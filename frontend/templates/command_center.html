@@ -27,7 +27,7 @@
 
       <div class="ml-auto hidden items-center gap-3 px-1 xl:flex" aria-label="Ora locală și UTC">
         <span class="clock-cell"><span class="clock-label">Local</span><span class="clock-time" x-text="localTime">--:--:--</span></span>
-        <span class="clock-cell"><span class="clock-label">UTC</span><span class="clock-time text-base-content/70" x-text="utcTime">--:--</span></span>
+        <span class="clock-cell"><span class="clock-label">UTC</span><span class="clock-time text-base-content/70" x-text="utcTime">--:--:--</span></span>
       </div>
 
       <div class="ml-auto flex shrink-0 items-center gap-1 xl:ml-0">
@@ -91,27 +91,23 @@
 
         <div class="panel monitor flex aspect-video items-center justify-center lg:aspect-auto lg:min-h-0 lg:flex-1" :class="mview !== 'live' && 'max-lg:hidden'">
           <img src="/video" alt="Flux video live de la camera pistei" class="max-h-full max-w-full object-contain">
-          <span class="monitor-corner top-3 left-3 border-t-2 border-l-2" aria-hidden="true"></span>
-          <span class="monitor-corner top-3 right-3 border-t-2 border-r-2" aria-hidden="true"></span>
-          <span class="monitor-corner bottom-3 left-3 border-b-2 border-l-2" aria-hidden="true"></span>
-          <span class="monitor-corner right-3 bottom-3 border-r-2 border-b-2" aria-hidden="true"></span>
 
-          <div class="hud top-4 left-4">
+          <div class="hud top-5 left-5">
             <span class="hud-chip"><span class="live-dot"></span>LIVE</span>
           </div>
-          <div class="hud top-4 right-4">
+          <div class="hud top-5 right-5">
             <span x-show="large" x-cloak class="hud-chip bg-warning/90 font-bold text-warning-content">
               {{ icon("truck", "size-3.5") }}<span class="first-letter:uppercase" x-text="large ? (large.label || 'Obiect mare pe pistă') + (large.sector ? ' · ' + large.sector : '') : ''"></span>
             </span>
             <span class="hud-chip" x-show="status" x-text="status ? status.fps.toFixed(0) + ' cadre/s' : ''"></span>
           </div>
-          <div class="hud bottom-4 left-4">
+          <div class="hud bottom-5 left-5">
             <span x-show="status && status.learning" x-cloak class="hud-chip text-secondary">
               <span class="loading loading-ring loading-xs"></span>
               Învăț pista curată <span x-text="status ? status.learned_frames + '/' + status.reference_frames : ''"></span>
             </span>
           </div>
-          <div class="hud right-4 bottom-4">
+          <div class="hud right-5 bottom-5">
             <button class="btn btn-xs border-white/20 bg-black/60 text-white backdrop-blur hover:bg-black/80 sm:btn-sm" @click="resetReference()" :disabled="resetting"
                     title="Tot ce se vede acum e considerat fundal curat">
               {{ icon("refresh", "size-3.5") }} Pista e curată acum
@@ -140,7 +136,8 @@
                     <stop offset="0" stop-color="#222e44"/><stop offset="0.5" stop-color="#26334a"/><stop offset="1" stop-color="#222e44"/>
                   </linearGradient>
                 </defs>
-                <rect x="40" y="30" width="920" height="140" rx="14" fill="#eaf2ff"/>
+                {# Shoulder: x 8..992, so each end has a 52-wide box (8..60, 940..992) for its runway number. #}
+                <rect x="8" y="30" width="984" height="140" rx="14" fill="#eaf2ff"/>
                 <rect x="60" y="40" width="880" height="120" fill="url(#asphalt)"/>
                 <line x1="60" y1="43" x2="940" y2="43" stroke="#ffffff" stroke-width="1.5" opacity="0.85"/>
                 <line x1="60" y1="157" x2="940" y2="157" stroke="#ffffff" stroke-width="1.5" opacity="0.85"/>
@@ -152,19 +149,31 @@
                     <rect x="{{ 60 + i * cw }}" y="{{ 40 + j * ch }}" width="{{ cw }}" height="{{ ch }}"
                           fill="transparent" stroke="#ffffff" stroke-opacity="0.18" stroke-dasharray="2 6"
                           :class="{ 'sector-alert': flash.includes('{{ name }}') }"/>
-                    <text x="{{ 60 + (i + 0.5) * cw }}" y="{{ 40 + (j + 0.5) * ch + (-9 if j == (geometry.sectors_across // 2) and geometry.sectors_across % 2 else 0) }}" font-size="11" font-family="B612 Mono, Consolas, monospace"
-                          fill="#b7c3d9" text-anchor="middle" dominant-baseline="middle">{{ name }}</text>
+                    {% set lx, ly = 60 + (i + 0.5) * cw, 40 + (j + 0.5) * ch %}
+                    <text x="{{ lx }}" y="{{ ly }}" font-size="11" font-family="B612 Mono, Consolas, monospace"
+                          fill="#b7c3d9" text-anchor="middle" dominant-baseline="central">{{ name }}</text>
                   {% endfor %}
+                  {# Centreline dashes laid out symmetrically around each column's centre, so they stop
+                     evenly on both sides of a middle-row label and never touch the threshold bars. #}
+                  {% set mx = 60 + (i + 0.5) * cw %}
+                  {% if geometry.sectors_across % 2 %}{% for side in [-1, 1] %}{% for k in range(4) %}
+                    {% set a = mx + side * (22 + k * 28) %}{% set b = a + side * 16 %}
+                    {% if [a, b] | min >= 90 and [a, b] | max <= 910 and ([a, b] | max) - mx <= cw / 2 and mx - ([a, b] | min) <= cw / 2 %}
+                    <line x1="{{ a }}" y1="100" x2="{{ b }}" y2="100" stroke="#ffffff" stroke-width="2" opacity="0.6"/>
+                    {% endif %}
+                  {% endfor %}{% endfor %}{% endif %}
                 {% endfor %}
+                {% if not geometry.sectors_across % 2 %}
+                <line x1="100" y1="100" x2="900" y2="100" stroke="#ffffff" stroke-width="2" stroke-dasharray="16 12" opacity="0.6"/>
+                {% endif %}
                 {% for k in range(8) %}
                   <rect x="66" y="{{ 50 + k * 13 }}" width="18" height="6" rx="1" fill="#ffffff" opacity="0.92"/>
                   <rect x="916" y="{{ 50 + k * 13 }}" width="18" height="6" rx="1" fill="#ffffff" opacity="0.92"/>
                 {% endfor %}
-                <text x="24" y="101" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
-                      text-anchor="middle" dominant-baseline="middle">{{ runway_ends[0] }}</text>
-                <text x="976" y="101" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
-                      text-anchor="middle" dominant-baseline="middle">{{ runway_ends[1] }}</text>
-                <line x1="100" y1="100" x2="900" y2="100" stroke="#ffffff" stroke-width="2" stroke-dasharray="16 12" opacity="0.6"/>
+                <text x="34" y="100" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
+                      text-anchor="middle" dominant-baseline="central">{{ runway_ends[0] }}</text>
+                <text x="966" y="100" font-size="22" font-weight="800" font-family="Atkinson Hyperlegible Next, sans-serif" fill="#1769ff"
+                      text-anchor="middle" dominant-baseline="central">{{ runway_ends[1] }}</text>
                 {% for f in [0, 0.25, 0.5, 0.75, 1] %}
                   {% set tx = 60 + 880 * f %}
                   <line x1="{{ tx }}" y1="172" x2="{{ tx }}" y2="178" stroke="#6b7385"/>

@@ -357,11 +357,12 @@ document.addEventListener("alpine:init", () => {
       return labels.map((label, i) => ({ label, state: i < done ? "done" : i === done ? "now" : "todo" }));
     },
 
+    // Both clocks with seconds, in the same HH:MM:SS shape, so they line up.
     get localTime() {
-      return new Date(this.now).toLocaleTimeString("ro-RO");
+      return new Date(this.now).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
     },
     get utcTime() {
-      return new Date(this.now).toISOString().slice(11, 16);
+      return new Date(this.now).toISOString().slice(11, 19);
     },
 
     markerStyle(inc) {
